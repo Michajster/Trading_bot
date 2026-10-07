@@ -93,6 +93,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .quick button{font:500 .85rem var(--mono);padding:7px 0;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}
 .msg{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--accent-soft)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.strats{display:grid;gap:8px}
+.strat{display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+.strat[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--surface)}
+.botcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.botcard.stopped{opacity:.7}
+.bothead{display:grid;grid-template-columns:1fr auto;grid-template-areas:"main val" "spark spark";gap:8px 12px;align-items:center;width:100%;text-align:left;font:inherit;color:var(--ink);background:transparent;border:0;padding:14px 16px 6px;cursor:pointer}
+.botmain{grid-area:main;display:flex;flex-direction:column;gap:2px;min-width:0}
+.botname{font:600 1.05rem var(--body);display:flex;gap:8px;align-items:center}
+.botval{grid-area:val;display:flex;flex-direction:column;align-items:flex-end}
+.spark{grid-area:spark}.spark svg{width:100%;height:36px}
+.botstatus{padding:0 16px 14px}
+.botdetails{border-top:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
 .foot{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
@@ -110,48 +123,48 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
   <!-- ============ BOT ============ -->
   <div id="view-bot" class="wrap" style="max-width:none">
-    <section class="picker" aria-label="Wybór instrumentu">
-      <div class="seg" id="b-market"></div>
-      <div class="chips" id="b-assets"></div>
-      <div class="row between">
-        <div class="price" id="b-price">–</div>
-        <div class="status"><span class="dot" id="b-dot"></span><span id="b-status">Ładuję…</span></div>
-      </div>
+    <section class="panel" aria-label="Podsumowanie botów" id="b-summary"></section>
+
+    <section aria-labelledby="h-bots" id="b-listwrap">
+      <div class="row between"><h2 id="h-bots">Twoje boty</h2><button class="btn" type="button" id="b-new">+ Nowy bot</button></div>
+      <div id="b-list" class="stack"></div>
     </section>
 
-    <section aria-labelledby="h-bt">
-      <span class="eyebrow">Krok 1</span>
-      <h2 id="h-bt">Jak bot poradziłby sobie w przeszłości</h2>
-      <p class="lede">Strategia przecięcia średnich: gdy krótka średnia jest nad długą, bot trzyma instrument, gdy spada pod nią, sprzedaje. Krótszy interwał oznacza więcej decyzji, ale też więcej prowizji.</p>
+    <section id="b-builder" aria-labelledby="h-new" hidden>
+      <div class="row between"><h2 id="h-new">Nowy bot</h2><button class="linkbtn" type="button" id="n-cancel">Anuluj</button></div>
+
       <div class="panel">
-        <div class="controls">
-          <div><div class="k" style="margin-bottom:6px">Bot decyduje co</div><div class="seg" id="b-iv"></div></div>
-          <div class="ctl"><label for="fast">Krótka średnia (świece)</label><output id="fastOut"></output><input type="range" id="fast" min="3" max="50" step="1" value="10"></div>
-          <div class="ctl"><label for="slow">Długa średnia (świece)</label><output id="slowOut"></output><input type="range" id="slow" min="10" max="150" step="1" value="30"></div>
-        </div>
-        <div class="score">
-          <div><span class="k">Bot</span><span class="v" id="botV">–</span><span class="d" id="botD"></span></div>
-          <div><span class="k">Kup i trzymaj</span><span class="v" id="holdV">–</span><span class="d" id="holdD"></span></div>
-        </div>
-        <div class="facts" id="facts"></div>
-        <svg class="chart" id="eqChart" viewBox="0 0 600 220" role="img" aria-label="Wartość portfela bota i strategii kup i trzymaj"></svg>
-        <div class="legend"><span><i style="background:var(--accent)"></i>Bot</span><span><i style="background:var(--hold)"></i>Kup i trzymaj</span></div>
-        <svg class="chart" id="pxChart" viewBox="0 0 600 220" role="img" aria-label="Cena, średnie i transakcje"></svg>
-        <div class="legend"><span><i style="background:var(--ink)"></i>Cena</span><span><i style="background:var(--accent)"></i>Krótka</span><span><i style="background:var(--hold)"></i>Długa</span><span><i style="background:var(--up);width:8px;height:8px;border-radius:50%"></i>Kupno</span><span><i style="background:var(--down);width:8px;height:8px;border-radius:50%"></i>Sprzedaż</span></div>
+        <span class="k">1 · Czym handluje</span>
+        <div class="seg" id="n-market"></div>
+        <div class="chips" id="n-assets"></div>
+        <div class="row between"><span class="price" id="n-price">–</span><span class="status"><span class="dot" id="n-dot"></span><span id="n-status">–</span></span></div>
       </div>
-    </section>
 
-    <section aria-labelledby="h-fair">
-      <span class="eyebrow">Krok 2</span>
-      <h2 id="h-fair">Test uczciwości</h2>
-      <p class="lede">Najlepsze średnie szukam na pierwszych 2/3 danych, a sprawdzam na ostatniej 1/3, której bot nie widział.</p>
-      <div class="panel" id="fair"></div>
-    </section>
+      <div class="panel">
+        <span class="k">2 · Strategia</span>
+        <div class="strats" id="n-strats"></div>
+      </div>
 
-    <section aria-labelledby="h-live">
-      <span class="eyebrow">Krok 3</span>
-      <h2 id="h-live">Bot na żywo</h2>
-      <div class="panel" id="live"></div>
+      <div class="panel">
+        <span class="k">3 · Ustawienia</span>
+        <div><div class="note" style="margin-bottom:6px">Bot sprawdza rynek co</div><div class="seg" id="n-iv"></div></div>
+        <div class="controls" id="n-params"></div>
+        <div><div class="note" style="margin-bottom:6px">Wirtualny kapitał bota</div><div class="seg" id="n-cap"></div></div>
+      </div>
+
+      <div class="panel">
+        <span class="k">4 · Podgląd na historii</span>
+        <div class="score">
+          <div><span class="k">Bot</span><span class="v" id="p-bot">–</span><span class="d" id="p-botd"></span></div>
+          <div><span class="k">Kup i trzymaj</span><span class="v" id="p-hold">–</span><span class="d" id="p-holdd"></span></div>
+        </div>
+        <div class="facts" id="p-facts"></div>
+        <svg class="chart" id="p-eq" viewBox="0 0 600 200" role="img" aria-label="Wartość bota i strategii kup i trzymaj"></svg>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Bot</span><span><i style="background:var(--hold)"></i>Kup i trzymaj</span></div>
+        <svg class="chart" id="p-px" viewBox="0 0 600 200" role="img" aria-label="Cena i transakcje bota"></svg>
+        <p class="verdict" id="p-verdict"></p>
+        <button class="btn wide" type="button" id="n-start">Uruchom bota</button>
+      </div>
     </section>
   </div>
 
@@ -348,118 +361,252 @@ function chipButtons(el, list, current, onPick){
 }
 
 // =============== BOT ===============
-const B = {
-  market:'CR', sym:'BTC', iv:'15m', fast:10, slow:30, data:null, err:null, bot:store('bot100v2'), liveData:null, liveErr:null, loading:false,
-  async load(){
-    this.renderPicker();
-    if(!this.sym){ this.data=null; this.err=stocksErr||'Brak spółek do wyboru.'; this.renderAll(); return; }
-    this.loading=true; this.err=null; this.renderStatus();
-    const key=this.sym+this.iv;
-    try{ const d=await candles(this.sym,this.iv); if(key!==this.sym+this.iv) return; this.data=d; }
-    catch(e){ this.data=null; this.err = CRYPTO[this.sym] ? 'Binance nie odpowiada. Spróbuj za chwilę.' : (stocksErr || 'Brak danych dla tego interwału.'); }
-    this.loading=false; this.renderPicker(); this.renderAll();
-    this.loadLive();
-  },
-  renderPicker(){
-    segButtons($('b-market'), Object.entries(MARKETS), this.market, async m=>{ this.market=m; if(m!=='CR') await loadStocks(); const l=assetList(m); this.sym=l[0]?.sym||null; if(!intervalsFor(m).includes(this.iv)) this.iv='1h'; this.load(); });
-    chipButtons($('b-assets'), assetList(this.market), this.sym, s=>{ this.sym=s; this.load(); });
-    segButtons($('b-iv'), intervalsFor(this.market).map(v=>[v,IVLBL[v]]), this.iv, v=>{ this.iv=v; this.load(); });
-  },
-  renderStatus(){
-    const d=this.data;
-    $('b-price').textContent = d?.length && this.sym ? fmtPx(d.at(-1)[1], assetInfo(this.sym).cur) : '–';
-    $('b-dot').className='dot'+(d&&!this.err?' live':'');
-    $('b-status').textContent = this.loading ? 'Pobieram dane…' : this.err ? this.err
-      : `${d.length} świec po ${IVLBL[this.iv]}, ostatnia ${fmtT(d.at(-1)[0], this.iv)}`;
-  },
-  renderAll(){ this.renderStatus(); this.renderBacktest(); this.renderFair(); this.renderLive(); },
-  renderBacktest(){
-    const d=this.data;
-    if(!d || d.length < this.slow+10){ ['botV','holdV'].forEach(i=>$(i).textContent='–'); ['botD','holdD'].forEach(i=>$(i).textContent=''); $('facts').innerHTML=d?'<span>Za mało świec dla tak długiej średniej.</span>':''; $('eqChart').innerHTML=''; $('pxChart').innerHTML=''; return; }
-    const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
-    const start=Math.min(this.slow, closes.length-2);
-    const r=run(closes,this.fast,this.slow,start), b=r.eq.at(-1), h=r.hold.at(-1);
-    $('botV').textContent=nf(b)+' $'; $('botD').textContent=fmtPct((b/CAP-1)*100); $('botD').className='d '+cls(b-CAP);
-    $('holdV').textContent=nf(h)+' $'; $('holdD').textContent=fmtPct((h/CAP-1)*100); $('holdD').className='d '+cls(h-CAP);
-    const span = (times.at(-1)-times[start])/864e5;
-    $('facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span><span>Największy spadek: <b>${nf(r.dd,1)}%</b></span>`;
-    const t=times.slice(start), cur=assetInfo(this.sym).cur;
-    drawChart($('eqChart'),[{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}],t,this.iv,[],v=>nf(v,0)+' $');
-    drawChart($('pxChart'),[{vals:closes.slice(start),color:'var(--ink)',w:1.5},{vals:r.F.slice(start),color:'var(--accent)',w:1.5},{vals:r.S.slice(start),color:'var(--hold)',w:1.5}],t,this.iv,
-      r.trades.slice(-60).map(x=>({i:x.i-start,v:closes[x.i],buy:x.buy})));
-  },
-  renderFair(){
-    const d=this.data, el=$('fair');
-    if(!d || d.length<200){ el.innerHTML='<p class="note">Za mało danych do testu. Wybierz krótszy interwał albo inny instrument.</p>'; return; }
-    const closes=d.map(r=>r[1]), start=30, split=start+Math.floor((closes.length-start)*2/3);
-    let best=null;
-    for(const f of [5,10,15,20]) for(const s of [20,30,50,80]) if(f<s){ const r=run(closes,f,s,start,split); const v=r.eq.at(-1); if(!best||v>best.v) best={f,s,v,h:r.hold.at(-1)}; }
-    const t=run(closes,best.f,best.s,split), tb=t.eq.at(-1), th=t.hold.at(-1);
-    const a=best.v>best.h, b=tb>th;
-    const msg = a&&b ? 'Strategia wygrała z trzymaniem także na nowych danych. Dobry znak, ale jeden okres to wciąż mało, żeby mówić o przewadze.'
-      : a ? 'Na treningu ustawienia wyglądały świetnie, a na nowych danych przegrały z trzymaniem. To klasyczne przeuczenie.'
-      : b ? 'Na treningu przegrała, a na nowych danych akurat wygrała. To wygląda bardziej na przypadek niż na przewagę.'
-      : 'Strategia przegrała z trzymaniem i na treningu, i na nowych danych. W tym okresie prościej było po prostu kupić i czekać.';
-    el.innerHTML=`<div class="score"><div><span class="k">Trening · ${best.f}/${best.s}</span><span class="v">${nf(best.v)} $</span><span class="d">trzymanie: ${nf(best.h)} $</span></div>
-      <div><span class="k">Nowe dane</span><span class="v ${cls(tb-CAP)}">${nf(tb)} $</span><span class="d">trzymanie: ${nf(th)} $</span></div></div>
-      <p class="verdict">${msg}</p><div class="row"><button class="btn ghost" type="button" id="useBest">Ustaw ${best.f}/${best.s} w kroku 1</button></div>`;
-    $('useBest').onclick=()=>{ this.fast=best.f; this.slow=best.s; syncSliders(); this.renderBacktest(); $('h-bt').scrollIntoView({behavior:'smooth'}); };
-  },
-  async loadLive(){
-    const bot=this.bot; if(!bot) return;
-    try{
-      const since = bot.start - (bot.slow+2)*IVMS[bot.iv];
-      this.liveData = await candles(bot.sym, bot.iv, since); this.liveErr=null;
-    }catch(e){ this.liveErr='Nie udało się pobrać danych bota. Spróbuję ponownie za minutę.'; }
-    this.renderLive();
-  },
-  renderLive(){
-    const el=$('live'), bot=this.bot;
-    if(!bot){
-      const info=this.sym?assetInfo(this.sym):{market:'CR'}, closedNote = info.market!=='CR' ? ' Na akcjach bot handluje tylko w godzinach sesji.' : '';
-      el.innerHTML=`<p>Bot startuje z wirtualnymi 100 $ i ustawieniami z kroku 1: <b style="font-family:var(--mono)">${this.sym?label(this.sym):'–'} · co ${IVLBL[this.iv]} · ${this.fast}/${this.slow}</b>. Po zamknięciu każdej świecy decyduje: kup, sprzedaj albo czekaj.${closedNote}</p>
-        <p class="note">Nie musisz trzymać strony otwartej. Po powrocie bot przelicza wszystkie decyzje od startu. Stan zapisuje się w tej przeglądarce.</p>
-        <div class="row"><button class="btn" type="button" id="startBot" ${this.data&&this.sym?'':'disabled'}>Uruchom bota</button></div>`;
-      $('startBot').onclick=()=>{ this.bot={sym:this.sym,iv:this.iv,fast:this.fast,slow:this.slow,start:Date.now()}; store('bot100v2',this.bot); this.liveData=null; this.renderLive(); this.loadLive(); };
-      return;
+const STRATS = {
+  grid:{name:'Siatka', tag:'Rynek w bok', desc:'Rozstawia drabinkę zleceń w zakresie cen. Kupuje stopień niżej, sprzedaje stopień wyżej i zbiera wiele małych zysków.',
+    params:[{k:'range',l:'Zakres w górę i w dół',min:2,max:40,step:1,v:10,u:'%'},{k:'grids',l:'Liczba stopni',min:3,max:40,step:1,v:10,u:''}]},
+  dca:{name:'DCA', tag:'Spadki i odbicia', desc:'Kupuje w częściach: dokupuje, gdy cena spada, i sprzedaje całość, kiedy średnia cena zakupu da cel zysku. Potem zaczyna od nowa.',
+    params:[{k:'tp',l:'Cel zysku',min:0.5,max:10,step:0.5,v:2,u:'%'},{k:'step',l:'Dokupuj co spadek o',min:0.5,max:10,step:0.5,v:2,u:'%'},{k:'so',l:'Maks. dokupień',min:1,max:10,step:1,v:4,u:''}]},
+  sma:{name:'Trend', tag:'Wyraźny trend', desc:'Kupuje, gdy krótka średnia przetnie długą od dołu, i sprzedaje przy przecięciu w dół. Łapie duże ruchy, traci w bocznym rynku.',
+    params:[{k:'fast',l:'Krótka średnia (świece)',min:3,max:50,step:1,v:10,u:''},{k:'slow',l:'Długa średnia (świece)',min:10,max:150,step:1,v:30,u:''}]},
+  rsi:{name:'RSI', tag:'Wahania', desc:'Kupuje, gdy wskaźnik RSI pokaże, że cena za mocno spadła, i sprzedaje, gdy za mocno wzrosła.',
+    params:[{k:'period',l:'Okres RSI (świece)',min:5,max:30,step:1,v:14,u:''},{k:'low',l:'Kupuj poniżej',min:10,max:45,step:1,v:30,u:''},{k:'high',l:'Sprzedawaj powyżej',min:55,max:90,step:1,v:70,u:''}]},
+};
+const CAPS = [50,100,250,1000];
+const warmup = (type,P) => type==='sma' ? P.slow+2 : type==='rsi' ? P.period*3 : 2;
+
+function rsiArr(c,n){ const o=new Array(c.length).fill(null); let g=0,l=0; for(let i=1;i<c.length;i++){ const d=c[i]-c[i-1], up=Math.max(d,0), dn=Math.max(-d,0); if(i<=n){ g+=up; l+=dn; if(i===n){ g/=n; l/=n; o[i]=l===0?100:100-100/(1+g/l); } } else { g=(g*(n-1)+up)/n; l=(l*(n-1)+dn)/n; o[i]=l===0?100:100-100/(1+g/l); } } return o; }
+function gridLevels(P, p0){ const lo=P.lo ?? p0*(1-P.range/100), hi=P.hi ?? p0*(1+P.range/100); const st=(hi-lo)/P.grids; return Array.from({length:P.grids+1},(_,k)=>lo+k*st); }
+
+// One engine for every bot type. Returns equity per candle from `start` to `end`.
+function simulate(type, P, closes, start, cap, end=closes.length-1){
+  const p0=closes[start], res={eq:[],hold:[],trades:[],fees:0,lines:[],levels:null,info:{}};
+  const mark=(i,buy)=>{ const l=res.trades.at(-1); if(!(l && l.i===i && l.buy===buy)) res.trades.push({i,buy}); };
+  if(type==='sma' || type==='rsi'){
+    let cash=cap, qty=0, F, S, R;
+    if(type==='sma'){ F=sma(closes,P.fast); S=sma(closes,P.slow); res.lines=[{vals:F,color:'var(--accent)'},{vals:S,color:'var(--hold)'}]; }
+    else R=rsiArr(closes,P.period);
+    const buy=i=>{ const fee=cash*FEE; qty=(cash-fee)/closes[i]; res.fees+=fee; cash=0; mark(i,true); };
+    const sell=i=>{ const g=qty*closes[i], fee=g*FEE; cash+=g-fee; res.fees+=fee; qty=0; mark(i,false); };
+    for(let i=start;i<=end;i++){
+      if(type==='sma'){ const want=F[i]!=null && S[i]!=null && F[i]>S[i]; if(want && !qty) buy(i); else if(!want && qty) sell(i); }
+      else { const r=R[i]; if(r!=null){ if(!qty && r<P.low) buy(i); else if(qty && r>P.high) sell(i); } }
+      res.eq.push(cash+qty*closes[i]); res.hold.push(cap*closes[i]/p0);
     }
-    const info=assetInfo(bot.sym);
-    const head=`<div class="row between"><span class="eyebrow">${label(bot.sym)} · co ${IVLBL[bot.iv]} · ${bot.fast}/${bot.slow}</span><span class="note">start ${fmtT(bot.start,'1h')}</span></div>`;
-    const d=this.liveData;
-    let body;
-    if(!d){ body = `<p class="note">${this.liveErr || 'Pobieram dane bota…'}</p>`; }
-    else {
-      const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
-      // first candle that closed after the bot started
-      let s=times.findIndex(t=>t+IVMS[bot.iv] >= bot.start);
-      if(s<0) s=closes.length-1;
-      const r = closes.length ? run(closes,bot.fast,bot.slow,s) : null;
-      if(!r){ body='<p class="note">Czekam na pierwszą zamkniętą świecę.</p>'; }
-      else {
-        const v=r.eq.at(-1), h=r.hold.at(-1);
-        const next = times.at(-1) + 2*IVMS[bot.iv];
-        const mins = Math.max(0, Math.round((next-Date.now())/60000));
-        const nextTxt = info.market!=='CR' && !marketOpen(info.market) ? 'Sesja zamknięta, bot czeka na otwarcie.'
-          : `Następna decyzja około ${fmtT(next,'1h').slice(-5)}${mins<120?` (za ${mins} min)`:''}.`;
-        const rows=r.trades.slice(-30).reverse().map(t=>`<tr><td>${fmtT(times[t.i],bot.iv==='1d'?'1d':'1h')}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}</td><td>${fmtPx(closes[t.i],info.cur)}</td></tr>`).join('');
-        body=`<div class="score"><div><span class="k">Portfel bota</span><span class="v">${nf(v)} $</span><span class="d ${cls(v-CAP)}">${fmtPct((v/CAP-1)*100)}</span></div>
-          <div><span class="k">Gdyby tylko trzymać</span><span class="v">${nf(h)} $</span><span class="d ${cls(h-CAP)}">${fmtPct((h/CAP-1)*100)}</span></div></div>
-          <div class="facts"><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span></div>
-          <p class="verdict">Bot ${r.pos?`trzyma <b>${label(bot.sym)}</b>.`:'czeka w <b>dolarach</b>.'} ${nextTxt}</p>
-          ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Cena</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Bot nie zrobił jeszcze żadnej transakcji.</p>'}`;
+    res.info={pos:qty>0, rsi:R?R[end]:null};
+  } else if(type==='dca'){
+    const part=cap/(1+P.so); let cash=cap, qty=0, spent=0, last=0, used=0, deals=0, profit=0, waitUntil=-1;
+    const buy=i=>{ const amt=Math.min(part,cash); if(amt<0.01) return; const fee=amt*FEE; qty+=(amt-fee)/closes[i]; spent+=amt; cash-=amt; res.fees+=fee; last=closes[i]; mark(i,true); };
+    for(let i=start;i<=end;i++){
+      const p=closes[i];
+      if(qty===0){ if(i>waitUntil){ used=0; buy(i); } }
+      else if(p >= spent/qty*(1+P.tp/100)){ const g=qty*p, fee=g*FEE; cash+=g-fee; res.fees+=fee; profit+=g-fee-spent; deals++; qty=0; spent=0; waitUntil=i; mark(i,false); }
+      else if(used<P.so && p<=last*(1-P.step/100)){ buy(i); used++; }
+      res.eq.push(cash+qty*p); res.hold.push(cap*p/p0);
+    }
+    res.info={qty, used, so:P.so, target: qty ? spent/qty*(1+P.tp/100) : null, deals, profit};
+  } else if(type==='grid'){
+    const L=gridLevels(P,p0), N=P.grids, part=cap/N; let cash=cap, profit=0, pairs=0;
+    const cell=new Array(N).fill(0), cost=new Array(N).fill(0);
+    res.levels=L;
+    for(let k=0;k<N;k++) if(L[k]>=p0 && cash>=part-1e-9){ const fee=part*FEE; cell[k]=(part-fee)/p0; cost[k]=part; cash-=part; res.fees+=fee; mark(start,true); }
+    for(let i=start;i<=end;i++){
+      const p=closes[i];
+      if(i>start) for(let k=0;k<N;k++){
+        if(cell[k]>0 && p>=L[k+1]){ const g=cell[k]*L[k+1], fee=g*FEE; cash+=g-fee; res.fees+=fee; profit+=g-fee-cost[k]; pairs++; cell[k]=0; mark(i,false); }
+        else if(cell[k]===0 && p<=L[k] && cash>=part-1e-9){ const fee=part*FEE; cell[k]=(part-fee)/L[k]; cost[k]=part; cash-=part; res.fees+=fee; mark(i,true); }
       }
+      res.eq.push(cash+cell.reduce((a,b)=>a+b,0)*p); res.hold.push(cap*p/p0);
     }
-    el.innerHTML = head + body + `<div class="row" id="resetRow"><button class="btn ghost" type="button" id="resetBot">Zatrzymaj i zacznij od nowa</button></div>`;
-    $('resetBot').onclick=()=>{
-      $('resetRow').innerHTML=`<span>Wyzerować bota i jego historię?</span><button class="btn" type="button" id="yes">Tak</button><button class="btn ghost" type="button" id="no">Anuluj</button>`;
-      $('yes').onclick=()=>{ this.bot=null; store('bot100v2',null); this.renderLive(); };
-      $('no').onclick=()=>this.renderLive();
+    const p=closes[end];
+    res.info={profit, pairs, filled:cell.filter(q=>q>0).length, N, lo:L[0], hi:L[N], where: p<L[0]?'below':p>L[N]?'above':'in'};
+  }
+  return res;
+}
+function statusText(type, P, res, sym, cur, price){
+  const i=res.info, s=label(sym);
+  if(type==='sma') return i.pos ? `Trzyma ${s}. Sprzeda, gdy krótka średnia spadnie pod długą.` : `Czeka w dolarach. Kupi, gdy krótka średnia przebije długą w górę.`;
+  if(type==='rsi') return `RSI teraz ${i.rsi!=null?nf(i.rsi,0):'–'}. ` + (i.pos ? `Trzyma ${s}, sprzeda przy RSI powyżej ${P.high}.` : `Czeka, kupi przy RSI poniżej ${P.low}.`);
+  if(type==='dca') return i.qty ? `Transakcja w toku: ${1+i.used} z ${1+i.so} części kupione. Sprzeda wszystko przy ${fmtPx(i.target,cur)}. Zamknięte transakcje: ${i.deals}, zysk z nich ${nf(i.profit)} $.`
+    : `Zamknięte transakcje: ${i.deals}, zysk z nich ${nf(i.profit)} $. Zaraz zaczyna nową.`;
+  if(type==='grid') return `Zakres ${fmtPx(i.lo,cur)} – ${fmtPx(i.hi,cur)}. ${i.where==='in'?'Cena w zakresie':i.where==='above'?'Cena powyżej zakresu, bot czeka w gotówce':'Cena poniżej zakresu, bot trzyma wszystko'}. Zysk z siatki: ${nf(i.profit)} $ (${i.pairs} par kupno–sprzedaż).`;
+  return '';
+}
+function sparkline(vals, base){
+  const W=120,H=36, lo=Math.min(...vals,base), hi=Math.max(...vals,base), sp=hi-lo||1;
+  const x=i=>vals.length<2?W:i*W/(vals.length-1), y=v=>H-2-(H-4)*(v-lo)/sp;
+  const d=vals.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join('');
+  const col = vals.at(-1)>=base ? 'var(--up)' : 'var(--down)';
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><line x1="0" x2="${W}" y1="${y(base)}" y2="${y(base)}" stroke="var(--line)" stroke-dasharray="3 3"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.8"/></svg>`;
+}
+function priceChart(el, res, closes, times, start, iv, H=200){
+  const lines=[{vals:closes.slice(start,start+res.eq.length),color:'var(--ink)',w:1.5}];
+  for(const l of res.lines) lines.push({vals:l.vals.slice(start,start+res.eq.length),color:l.color,w:1.5});
+  if(res.levels) for(const lv of res.levels) lines.push({vals:new Array(res.eq.length).fill(lv),color:'var(--line)',w:1});
+  drawChart(el, lines, times.slice(start,start+res.eq.length), iv, res.trades.slice(-80).map(t=>({i:t.i-start,v:closes[t.i],buy:t.buy})), shortNum, H);
+}
+
+const B = {
+  bots: [], data:{}, err:{}, open:null,
+  n:{market:'CR', sym:'BTC', iv:'15m', type:'grid', P:{}, cap:100, data:null, err:null, loading:false},
+  init(){
+    let bots=store('bots100v3');
+    if(!bots){ bots=[]; const old=store('bot100v2'); if(old) bots.push({id:Date.now(),sym:old.sym,iv:old.iv,type:'sma',P:{fast:old.fast,slow:old.slow},cap:100,start:old.start,stopped:null}); store('bots100v3',bots); }
+    this.bots=bots; this.setType('grid',false);
+  },
+  save(){ store('bots100v3',this.bots); },
+  async load(){ this.render(); await this.refresh(); },
+  // fetch candles for every running bot, grouped by instrument and interval
+  async refresh(){
+    const groups={};
+    for(const b of this.bots){ const k=b.sym+'|'+b.iv, since=b.start-warmup(b.type,b.P)*IVMS[b.iv]; groups[k]=Math.min(groups[k]??Infinity, since); }
+    await Promise.all(Object.entries(groups).map(async([k,since])=>{
+      const [sym,iv]=k.split('|');
+      try{ this.data[k]=await candles(sym,iv,since); this.err[k]=null; }
+      catch(e){ this.err[k]= CRYPTO[sym] ? 'Binance nie odpowiada.' : (stocksErr||'Brak danych.'); }
+    }));
+    this.render();
+  },
+  result(b){
+    const d=this.data[b.sym+'|'+b.iv]; if(!d?.length) return null;
+    const closes=d.map(r=>r[1]), times=d.map(r=>r[0]), iv=IVMS[b.iv];
+    let s=times.findIndex(t=>t+iv>=b.start); if(s<0) s=closes.length-1;
+    let e=closes.length-1; if(b.stopped){ while(e>s && times[e]+iv>b.stopped) e--; }
+    if(s>e) return null;
+    return {res:simulate(b.type,b.P,closes,s,b.cap,e), closes, times, s, e};
+  },
+  render(){ this.renderSummary(); this.renderList(); },
+  renderSummary(){
+    let cap=0, val=0, priced=true, active=0;
+    for(const b of this.bots){ cap+=b.cap; const r=this.result(b); if(r) val+=r.res.eq.at(-1); else { priced=false; val+=b.cap; } if(!b.stopped) active++; }
+    const pl=val-cap;
+    $('b-summary').innerHTML = this.bots.length ? `<div class="score">
+        <div><span class="k">Wszystkie boty</span><span class="v">${priced?nf(val)+' $':'…'}</span>${priced?`<span class="d ${cls(pl)}">${(pl>=0?'+':'')+nf(pl)} $ (${fmtPct(cap?pl/cap*100:0)})</span>`:''}</div>
+        <div><span class="k">Kapitał w botach</span><span class="v">${nf(cap,0)} $</span><span class="d">aktywnych: ${active} z ${this.bots.length}</span></div></div>`
+      : `<p><b>Nie masz jeszcze żadnego bota.</b> Utwórz kilka z różnymi strategiami i instrumentami, a potem porównuj, który radzi sobie najlepiej. Każdy gra własnym wirtualnym kapitałem.</p>`;
+  },
+  renderList(){
+    const el=$('b-list');
+    if(!this.bots.length){ el.innerHTML=''; return; }
+    el.innerHTML = this.bots.map(b=>{
+      const info=assetInfo(b.sym), r=this.result(b), st=STRATS[b.type];
+      const val=r?r.res.eq.at(-1):null, pl=val!=null?val-b.cap:null;
+      const err=this.err[b.sym+'|'+b.iv];
+      const status = !r ? (err || 'Czekam na pierwszą zamkniętą świecę…') : b.stopped ? `Zatrzymany ${fmtT(b.stopped,'1h')}. Wynik zamrożony.` : statusText(b.type,b.P,r.res,b.sym,info.cur);
+      const open=this.open===b.id;
+      return `<article class="botcard${b.stopped?' stopped':''}" data-id="${b.id}">
+        <button class="bothead" type="button" data-toggle="${b.id}" aria-expanded="${open}">
+          <span class="botmain"><span class="botname">${label(b.sym)} <span class="pill">${st.name}</span></span><span class="note">co ${IVLBL[b.iv]} · ${nf(b.cap,0)} $ · od ${fmtT(b.start,'1h')}</span></span>
+          <span class="botval"><span class="v" style="font-size:1.05rem">${val!=null?nf(val)+' $':'…'}</span><span class="d ${pl==null?'':cls(pl)}">${pl!=null?fmtPct(pl/b.cap*100):''}</span></span>
+          ${r && r.res.eq.length>1 ? `<span class="spark">${sparkline(r.res.eq.length>200?r.res.eq.filter((_,i,a)=>i%Math.ceil(a.length/200)===0||i===a.length-1):r.res.eq, b.cap)}</span>` : ''}
+        </button>
+        <p class="note botstatus">${status}</p>
+        ${open ? this.details(b, r) : ''}
+      </article>`;
+    }).join('');
+    el.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=()=>{ const id=+btn.dataset.toggle; this.open=this.open===id?null:id; this.renderList(); });
+    if(this.open){ const b=this.bots.find(x=>x.id===this.open), r=b&&this.result(b); if(r){ const c=$('d-chart'); if(c){ if(r.res.eq.length>1) priceChart(c, r.res, r.closes, r.times, r.s, b.iv, 180); else c.outerHTML='<p class="note">Wykres pojawi się po zamknięciu kilku kolejnych świec.</p>'; } } this.wireDetails(b); }
+  },
+  details(b, r){
+    const info=assetInfo(b.sym);
+    let body='';
+    if(r){
+      const h=r.res.hold.at(-1);
+      const rows=r.res.trades.slice(-20).reverse().map(t=>`<tr><td>${fmtT(r.times[t.i],b.iv==='1d'?'1d':'1h')}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}</td><td>${fmtPx(r.closes[t.i],info.cur)}</td></tr>`).join('');
+      body=`<div class="facts"><span>Gdyby tylko trzymać: <b>${nf(h)} $</b></span><span>Transakcje: <b>${r.res.trades.length}</b></span><span>Prowizje: <b>${nf(r.res.fees)} $</b></span></div>
+        <svg class="chart" id="d-chart" viewBox="0 0 600 180" role="img" aria-label="Cena i transakcje bota"></svg>
+        ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Cena</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Bot nie zrobił jeszcze żadnej transakcji.</p>'}`;
+    }
+    const params=STRATS[b.type].params.map(p=>`${p.l}: <b>${b.P[p.k]}${p.u}</b>`).join(' · ');
+    return `<div class="botdetails">${body}<p class="note">${params}</p>
+      <div class="row" id="d-actions">${b.stopped?'':`<button class="btn ghost" type="button" id="d-stop">Zatrzymaj</button>`}<button class="btn ghost" type="button" id="d-copy">Skopiuj ustawienia</button><button class="btn ghost" type="button" id="d-del">Usuń</button></div></div>`;
+  },
+  wireDetails(b){
+    if(!b) return;
+    const stop=$('d-stop'); if(stop) stop.onclick=()=>{ b.stopped=Date.now(); this.save(); this.render(); };
+    $('d-copy').onclick=()=>{ const n=this.n; n.market=assetInfo(b.sym).market; n.sym=b.sym; n.iv=b.iv; n.type=b.type; n.P={...b.P}; delete n.P.lo; delete n.P.hi; n.cap=b.cap; this.openBuilder(false); };
+    $('d-del').onclick=()=>{
+      $('d-actions').innerHTML=`<span>Usunąć tego bota?</span><button class="btn sell" type="button" id="d-yes">Usuń</button><button class="btn ghost" type="button" id="d-no">Anuluj</button>`;
+      $('d-yes').onclick=()=>{ this.bots=this.bots.filter(x=>x.id!==b.id); this.open=null; this.save(); this.render(); };
+      $('d-no').onclick=()=>this.renderList();
     };
   },
+
+  // ---------- builder ----------
+  setType(t, rerender=true){ this.n.type=t; this.n.P=Object.fromEntries(STRATS[t].params.map(p=>[p.k,p.v])); if(rerender){ this.renderBuilder(); this.preview(); } },
+  openBuilder(reset=true){
+    if(reset){ this.n.market='CR'; this.n.sym='BTC'; this.n.iv='15m'; this.n.cap=100; this.setType('grid',false); }
+    $('b-builder').hidden=false; $('b-listwrap').hidden=true; $('b-summary').hidden=true;
+    this.renderBuilder(); this.loadN(); window.scrollTo({top:0,behavior:'smooth'});
+  },
+  closeBuilder(){ $('b-builder').hidden=true; $('b-listwrap').hidden=false; $('b-summary').hidden=false; this.render(); },
+  async loadN(){
+    const n=this.n;
+    if(n.market!=='CR') await loadStocks();
+    const list=assetList(n.market);
+    if(!list.find(a=>a.sym===n.sym)) n.sym=list[0]?.sym||null;
+    if(!intervalsFor(n.market).includes(n.iv)) n.iv='1h';
+    this.renderBuilder();
+    if(!n.sym){ n.data=null; n.err=stocksErr||'Brak instrumentów.'; this.renderNStatus(); this.preview(); return; }
+    n.loading=true; n.err=null; this.renderNStatus();
+    const key=n.sym+n.iv;
+    try{ const d=await candles(n.sym,n.iv); if(key!==n.sym+n.iv) return; n.data=d; }
+    catch(e){ n.data=null; n.err=CRYPTO[n.sym]?'Binance nie odpowiada. Spróbuj za chwilę.':(stocksErr||'Brak danych dla tego interwału.'); }
+    n.loading=false; this.renderNStatus(); this.preview();
+  },
+  renderNStatus(){
+    const n=this.n, d=n.data;
+    $('n-price').textContent = d?.length && n.sym ? fmtPx(d.at(-1)[1], assetInfo(n.sym).cur) : '–';
+    $('n-dot').className='dot'+(d&&!n.err?' live':'');
+    $('n-status').textContent = n.loading ? 'Pobieram dane…' : n.err || (d ? `${d.length} świec po ${IVLBL[n.iv]}` : '–');
+  },
+  renderBuilder(){
+    const n=this.n;
+    segButtons($('n-market'), Object.entries(MARKETS), n.market, m=>{ n.market=m; n.sym=null; this.loadN(); });
+    chipButtons($('n-assets'), assetList(n.market), n.sym, s=>{ n.sym=s; this.loadN(); });
+    segButtons($('n-iv'), intervalsFor(n.market).map(v=>[v,IVLBL[v]]), n.iv, v=>{ n.iv=v; this.loadN(); });
+    segButtons($('n-cap'), CAPS.map(c=>[String(c),c+' $']), String(n.cap), v=>{ n.cap=+v; this.renderBuilder(); this.preview(); });
+    $('n-strats').innerHTML = Object.entries(STRATS).map(([k,s])=>`<button type="button" class="strat" data-t="${k}" aria-pressed="${k===n.type}"><span class="row between"><b>${s.name}</b><span class="pill">${s.tag}</span></span><span class="note">${s.desc}</span></button>`).join('');
+    $('n-strats').querySelectorAll('button').forEach(b=>b.onclick=()=>this.setType(b.dataset.t));
+    $('n-params').innerHTML = STRATS[n.type].params.map(p=>`<div class="ctl"><label for="np-${p.k}">${p.l}</label><output id="npo-${p.k}">${n.P[p.k]}${p.u}</output><input type="range" id="np-${p.k}" min="${p.min}" max="${p.max}" step="${p.step}" value="${n.P[p.k]}"></div>`).join('');
+    STRATS[n.type].params.forEach(p=>{ $('np-'+p.k).oninput=e=>{ let v=+e.target.value;
+      if(n.type==='sma'){ if(p.k==='fast' && v>=n.P.slow) v=n.P.slow-1; if(p.k==='slow' && v<=n.P.fast) v=n.P.fast+1; e.target.value=v; }
+      n.P[p.k]=v; $('npo-'+p.k).textContent=v+p.u; this.preview(); }; });
+  },
+  preview(){
+    const n=this.n, d=n.data, ids=['p-bot','p-hold'];
+    const clear=msg=>{ ids.forEach(i=>$(i).textContent='–'); $('p-botd').textContent=''; $('p-holdd').textContent=''; $('p-facts').innerHTML=''; $('p-eq').innerHTML=''; $('p-px').innerHTML=''; $('p-verdict').textContent=msg||''; $('n-start').disabled=true; };
+    if(!d || !n.sym) return clear(n.loading?'':'Wybierz instrument z danymi.');
+    const w=warmup(n.type,n.P); if(d.length<w+20) return clear('Za mało świec dla tych ustawień.');
+    const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
+    const r=simulate(n.type,n.P,closes,w,n.cap), b=r.eq.at(-1), h=r.hold.at(-1);
+    $('p-bot').textContent=nf(b)+' $'; $('p-botd').textContent=fmtPct((b/n.cap-1)*100); $('p-botd').className='d '+cls(b-n.cap);
+    $('p-hold').textContent=nf(h)+' $'; $('p-holdd').textContent=fmtPct((h/n.cap-1)*100); $('p-holdd').className='d '+cls(h-n.cap);
+    const span=(times.at(-1)-times[w])/864e5;
+    let extra='';
+    if(n.type==='grid') extra=`<span>Zysk z siatki: <b>${nf(r.info.profit)} $</b></span>`;
+    if(n.type==='dca') extra=`<span>Zamknięte transakcje: <b>${r.info.deals}</b></span>`;
+    $('p-facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span>${extra}`;
+    drawChart($('p-eq'),[{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}],times.slice(w),n.iv,[],v=>nf(v,0)+' $',200);
+    priceChart($('p-px'), r, closes, times, w, n.iv);
+    const beat=b>h, gain=b>n.cap;
+    $('p-verdict').innerHTML = (gain&&beat ? 'Na tej historii bot zarobił i pobił zwykłe trzymanie.' : gain ? 'Bot zarobił, ale zwykłe trzymanie dało więcej.' : beat ? 'Bot stracił, ale mniej niż przy zwykłym trzymaniu.' : 'Na tej historii bot stracił więcej niż przy zwykłym trzymaniu.')
+      + (n.type==='grid' ? ' Zakres siatki liczę od ceny z początku podglądu. Prawdziwy bot ustawi go wokół obecnej ceny.' : '')
+      + ' Przeszłość nie gwarantuje przyszłości.';
+    $('n-start').disabled=false;
+  },
+  start(){
+    const n=this.n, d=n.data; if(!d||!n.sym) return;
+    const P={...n.P};
+    if(n.type==='grid'){ const L=gridLevels(P, d.at(-1)[1]); P.lo=L[0]; P.hi=L.at(-1); }
+    const bot={id:Date.now(), sym:n.sym, iv:n.iv, type:n.type, P, cap:n.cap, start:Date.now(), stopped:null};
+    this.bots.unshift(bot); this.save(); this.open=bot.id;
+    this.closeBuilder(); this.refresh();
+  },
 };
-function syncSliders(){ $('fast').value=B.fast; $('slow').value=B.slow; $('fastOut').textContent=B.fast; $('slowOut').textContent=B.slow; }
-function onSlide(){ let f=+$('fast').value, s=+$('slow').value; if(f>=s){ if(this.id==='fast') s=Math.min(150,f+1); else f=Math.max(3,s-1); } B.fast=f; B.slow=s; syncSliders(); B.renderBacktest(); B.renderFair(); if(!B.bot) B.renderLive(); }
-$('fast').oninput=onSlide; $('slow').oninput=onSlide;
+$('b-new').onclick=()=>B.openBuilder();
+$('n-cancel').onclick=()=>B.closeBuilder();
+$('n-start').onclick=()=>B.start();
+B.init();
 
 // =============== GIEŁDA ===============
 const X = {
@@ -625,12 +772,11 @@ $('x-submit').onclick=()=>X.submit();
 
 // ---------------- timers ----------------
 setInterval(()=>{ if(document.hidden) return; if(!$('view-ex').hidden && X.sym && CRYPTO[X.sym]) X.refresh(false); }, 5000);
-setInterval(()=>{ if(document.hidden) return; if(!$('view-ex').hidden){ if(X.sym && !CRYPTO[X.sym]) X.refresh(false); X.refreshHeld(); } else { B.loadLive(); } }, 60000);
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ if(!$('view-ex').hidden) X.refresh(true); else B.loadLive(); } });
+setInterval(()=>{ if(document.hidden) return; if(!$('view-ex').hidden){ if(X.sym && !CRYPTO[X.sym]) X.refresh(false); X.refreshHeld(); } else if($('b-builder').hidden) { B.refresh(); } }, 60000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ if(!$('view-ex').hidden) X.refresh(true); else B.refresh(); } });
 
 // ---------------- boot ----------------
-syncSliders();
-loadStocks().then(()=>{ if(!$('view-ex').hidden){ X.renderPicker(); } else B.renderPicker(); X.refreshHeld(); });
+loadStocks().then(()=>{ if(!$('view-ex').hidden){ X.renderPicker(); } else if(!$('b-builder').hidden){ B.renderBuilder(); } X.refreshHeld(); });
 showTab(location.hash==='#gielda' ? 'gielda' : 'bot');
 </script>
 </body>
