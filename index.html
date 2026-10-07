@@ -3,59 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#eef1f4">
 <title>Bot na 100 $</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one narrow column like a trading slip; summary numbers first, charts under them, bot ledger at the end */
+/* Layout: one narrow column like a trading slip; two tabs (bot, exchange); summary numbers first, charts under them, ledgers last */
 :root{
   --bg:#eef1f4; --surface:#ffffff; --ink:#14202e; --muted:#5b6878; --line:#d5dce4;
   --accent:#b8640a; --accent-soft:#f6e6d2; --up:#16794a; --down:#c0392b; --hold:#6f7f95;
   --display:'Bricolage Grotesque',ui-sans-serif,system-ui,sans-serif;
   --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+@media (prefers-color-scheme:dark){:root{
   --bg:#10161d; --surface:#18212b; --ink:#e6ebf1; --muted:#97a3b2; --line:#2a3644;
   --accent:#f0a24a; --accent-soft:#3a2a17; --up:#4cc38a; --down:#f07167; --hold:#8d9bb0; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#10161d; --surface:#18212b; --ink:#e6ebf1; --muted:#97a3b2; --line:#2a3644;
-  --accent:#f0a24a; --accent-soft:#3a2a17; --up:#4cc38a; --down:#f07167; --hold:#8d9bb0; color-scheme:dark}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
-.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
-h1{font-family:var(--display);font-weight:800;font-size:2.1rem;line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
-h2{font-family:var(--display);font-weight:600;font-size:1.3rem;margin:0;text-wrap:balance}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+h1{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1.05;margin:0;letter-spacing:-.01em}
+h2{font-family:var(--display);font-weight:600;font-size:1.25rem;margin:0;text-wrap:balance}
 p{margin:0}
 .lede{color:var(--muted);max-width:60ch}
 .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-header{display:flex;flex-direction:column;gap:10px}
+header{display:flex;flex-direction:column;gap:12px}
 section{display:flex;flex-direction:column;gap:14px}
-.coins{display:flex;gap:8px;flex-wrap:wrap}
-.coin{font:500 .95rem var(--mono);padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
-.coin[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.tabs button{flex:1;font:600 .95rem var(--body);padding:10px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.picker{display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;font:500 .9rem var(--mono);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.chip small{opacity:.6;font-family:var(--body)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.83rem;color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--hold);flex:none}
-.dot.live{background:var(--up)}
+.dot.live{background:var(--up)} .dot.closed{background:var(--down)}
 .linkbtn{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .price{font:500 1.6rem var(--mono);font-variant-numeric:tabular-nums}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.pill{font:500 .75rem var(--mono);padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.pill.open{background:color-mix(in srgb,var(--up) 15%,transparent);color:var(--up)}
+.pill.closed{background:color-mix(in srgb,var(--down) 13%,transparent);color:var(--down)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .controls{display:grid;gap:12px}
 .ctl{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
 .ctl label{font-size:.9rem}
 .ctl output{font:500 .9rem var(--mono);font-variant-numeric:tabular-nums}
 .ctl input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{flex:1;font:500 .85rem var(--mono);padding:8px 4px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button{flex:1;font:500 .85rem var(--mono);padding:8px 2px;border:0;background:transparent;color:var(--ink);cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .score{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .score div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.score .k{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.score .v{font:500 1.35rem var(--mono);font-variant-numeric:tabular-nums}
-.score .d{font:400 .85rem var(--mono)}
+.k{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.v{font:500 1.3rem var(--mono);font-variant-numeric:tabular-nums}
+.d{font:400 .85rem var(--mono)}
 .up{color:var(--up)} .down{color:var(--down)}
 .facts{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;color:var(--muted)}
 .facts b{font-family:var(--mono);font-weight:500;color:var(--ink)}
@@ -65,304 +72,566 @@ section{display:flex;flex-direction:column;gap:14px}
 .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
 .verdict{border-left:3px solid var(--accent);padding:2px 0 2px 12px;font-size:.95rem}
 .btn{font:600 1rem var(--body);padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:var(--surface);cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.buy{background:var(--up)} .btn.sell{background:var(--down)}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
-.btn:focus-visible,.coin:focus-visible,.seg button:focus-visible,.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.wide{width:100%}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
 .ledger{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
-.ledger th{text-align:left;font-weight:500;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line)}
-.ledger td{padding:8px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+.ledger th{text-align:left;font-weight:500;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ledger td{padding:8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
 .ledger td:last-child,.ledger th:last-child{text-align:right}
 .tablebox{overflow-x:auto}
 .note{font-size:.82rem;color:var(--muted)}
+.field{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px}
+.field input{flex:1;min-width:0;font:500 1.1rem var(--mono);border:0;background:transparent;color:var(--ink);padding:12px 0}
+.field input:focus{outline:none}
+.field:focus-within{border-color:var(--accent)}
+.field span{font:500 .9rem var(--mono);color:var(--muted)}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.quick button{font:500 .85rem var(--mono);padding:7px 0;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}
+.msg{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--accent-soft)}
 .foot{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:6px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
-
 </head>
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">Paper trading · wirtualne pieniądze</span>
+    <span class="eyebrow">Wirtualne pieniądze · nauka tradingu</span>
     <h1>Bot na 100 $</h1>
-    <p class="lede">Prosta strategia przecięcia dwóch średnich kroczących. Gdy krótka średnia jest nad długą, bot trzyma kryptowalutę. Gdy spada pod nią, sprzedaje i czeka w dolarach. Decyzja zapada raz dziennie, na zamknięciu dnia.</p>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-bot" aria-selected="true" type="button">Bot</button>
+      <button role="tab" id="tab-ex" aria-selected="false" type="button">Giełda</button>
+    </div>
   </header>
 
-  <section aria-label="Wybór kryptowaluty">
-    <div class="coins" id="coins"></div>
-    <div class="row" style="justify-content:space-between">
-      <div class="price" id="price">–</div>
-      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Ładuję dane…</span><button class="linkbtn" id="refresh" type="button">Odśwież</button></div>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-bt">
-    <span class="eyebrow">Krok 1</span>
-    <h2 id="h-bt">Jak bot poradziłby sobie w przeszłości</h2>
-    <div class="panel">
-      <div class="controls">
-        <div class="seg" role="group" aria-label="Okres testu" id="period"></div>
-        <div class="ctl"><label for="fast">Krótka średnia (dni)</label><output id="fastOut"></output><input type="range" id="fast" min="3" max="50" step="1" value="10"></div>
-        <div class="ctl"><label for="slow">Długa średnia (dni)</label><output id="slowOut"></output><input type="range" id="slow" min="10" max="150" step="1" value="30"></div>
+  <!-- ============ BOT ============ -->
+  <div id="view-bot" class="wrap" style="max-width:none">
+    <section class="picker" aria-label="Wybór instrumentu">
+      <div class="seg" id="b-market"></div>
+      <div class="chips" id="b-assets"></div>
+      <div class="row between">
+        <div class="price" id="b-price">–</div>
+        <div class="status"><span class="dot" id="b-dot"></span><span id="b-status">Ładuję…</span></div>
       </div>
-      <div class="score">
-        <div><span class="k">Bot</span><span class="v" id="botV">–</span><span class="d" id="botD"></span></div>
-        <div><span class="k">Kup i trzymaj</span><span class="v" id="holdV">–</span><span class="d" id="holdD"></span></div>
+    </section>
+
+    <section aria-labelledby="h-bt">
+      <span class="eyebrow">Krok 1</span>
+      <h2 id="h-bt">Jak bot poradziłby sobie w przeszłości</h2>
+      <p class="lede">Strategia przecięcia średnich: gdy krótka średnia jest nad długą, bot trzyma instrument, gdy spada pod nią, sprzedaje. Krótszy interwał oznacza więcej decyzji, ale też więcej prowizji.</p>
+      <div class="panel">
+        <div class="controls">
+          <div><div class="k" style="margin-bottom:6px">Bot decyduje co</div><div class="seg" id="b-iv"></div></div>
+          <div class="ctl"><label for="fast">Krótka średnia (świece)</label><output id="fastOut"></output><input type="range" id="fast" min="3" max="50" step="1" value="10"></div>
+          <div class="ctl"><label for="slow">Długa średnia (świece)</label><output id="slowOut"></output><input type="range" id="slow" min="10" max="150" step="1" value="30"></div>
+        </div>
+        <div class="score">
+          <div><span class="k">Bot</span><span class="v" id="botV">–</span><span class="d" id="botD"></span></div>
+          <div><span class="k">Kup i trzymaj</span><span class="v" id="holdV">–</span><span class="d" id="holdD"></span></div>
+        </div>
+        <div class="facts" id="facts"></div>
+        <svg class="chart" id="eqChart" viewBox="0 0 600 220" role="img" aria-label="Wartość portfela bota i strategii kup i trzymaj"></svg>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Bot</span><span><i style="background:var(--hold)"></i>Kup i trzymaj</span></div>
+        <svg class="chart" id="pxChart" viewBox="0 0 600 220" role="img" aria-label="Cena, średnie i transakcje"></svg>
+        <div class="legend"><span><i style="background:var(--ink)"></i>Cena</span><span><i style="background:var(--accent)"></i>Krótka</span><span><i style="background:var(--hold)"></i>Długa</span><span><i style="background:var(--up);width:8px;height:8px;border-radius:50%"></i>Kupno</span><span><i style="background:var(--down);width:8px;height:8px;border-radius:50%"></i>Sprzedaż</span></div>
       </div>
-      <div class="facts" id="facts"></div>
-      <svg class="chart" id="eqChart" viewBox="0 0 600 220" role="img" aria-label="Wartość portfela bota i strategii kup i trzymaj"></svg>
-      <div class="legend"><span><i style="background:var(--accent)"></i>Bot</span><span><i style="background:var(--hold)"></i>Kup i trzymaj</span></div>
-      <svg class="chart" id="pxChart" viewBox="0 0 600 220" role="img" aria-label="Cena, średnie i transakcje"></svg>
-      <div class="legend"><span><i style="background:var(--ink)"></i>Cena</span><span><i style="background:var(--accent)"></i>Krótka średnia</span><span><i style="background:var(--hold)"></i>Długa średnia</span><span><i style="background:var(--up);width:8px;height:8px;border-radius:50%"></i>Kupno</span><span><i style="background:var(--down);width:8px;height:8px;border-radius:50%"></i>Sprzedaż</span></div>
-      <p class="note">Każda transakcja kosztuje 0,1% prowizji, tak jak na typowej giełdzie.</p>
-    </div>
-  </section>
+    </section>
 
-  <section aria-labelledby="h-fair">
-    <span class="eyebrow">Krok 2</span>
-    <h2 id="h-fair">Test uczciwości</h2>
-    <p class="lede">Ustawienia łatwo dopasować do historii tak, że wyglądają genialnie. Dlatego szukam najlepszych średnich na pierwszych 2/3 okresu, a potem sprawdzam je na ostatniej 1/3, której bot nie widział.</p>
-    <div class="panel" id="fair"></div>
-  </section>
+    <section aria-labelledby="h-fair">
+      <span class="eyebrow">Krok 2</span>
+      <h2 id="h-fair">Test uczciwości</h2>
+      <p class="lede">Najlepsze średnie szukam na pierwszych 2/3 danych, a sprawdzam na ostatniej 1/3, której bot nie widział.</p>
+      <div class="panel" id="fair"></div>
+    </section>
 
-  <section aria-labelledby="h-live">
-    <span class="eyebrow">Krok 3</span>
-    <h2 id="h-live">Bot na żywo, wirtualne 100 $</h2>
-    <div class="panel" id="live"></div>
-  </section>
+    <section aria-labelledby="h-live">
+      <span class="eyebrow">Krok 3</span>
+      <h2 id="h-live">Bot na żywo</h2>
+      <div class="panel" id="live"></div>
+    </section>
+  </div>
+
+  <!-- ============ GIEŁDA ============ -->
+  <div id="view-ex" class="wrap" style="max-width:none" hidden>
+    <section class="picker" aria-label="Wybór instrumentu">
+      <div class="seg" id="x-market"></div>
+      <div class="chips" id="x-assets"></div>
+    </section>
+
+    <section class="panel" aria-label="Notowanie">
+      <div class="row between">
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="k" id="x-name">–</span>
+          <span class="price" id="x-price">–</span>
+          <span class="d" id="x-change"></span>
+        </div>
+        <span class="pill" id="x-session">–</span>
+      </div>
+      <svg class="chart" id="x-chart" viewBox="0 0 600 200" role="img" aria-label="Wykres ceny z ostatnich godzin"></svg>
+      <div class="status"><span class="dot" id="x-dot"></span><span id="x-status">Ładuję…</span></div>
+    </section>
+
+    <section class="panel" aria-label="Zlecenie">
+      <div class="seg" id="x-side">
+        <button type="button" data-s="buy" aria-pressed="true">Kup</button>
+        <button type="button" data-s="sell" aria-pressed="false">Sprzedaj</button>
+      </div>
+      <label class="k" for="x-amount" id="x-amount-label">Kwota</label>
+      <div class="field"><input id="x-amount" type="number" inputmode="decimal" min="0" step="any" placeholder="0"><span id="x-unit">$</span></div>
+      <div class="quick" id="x-quick">
+        <button type="button" data-p="25">25%</button><button type="button" data-p="50">50%</button><button type="button" data-p="75">75%</button><button type="button" data-p="100">Max</button>
+      </div>
+      <p class="note" id="x-preview">&nbsp;</p>
+      <button class="btn buy wide" type="button" id="x-submit">Kup</button>
+      <p class="msg" id="x-msg" hidden></p>
+    </section>
+
+    <section aria-labelledby="h-wallet">
+      <div class="row between"><h2 id="h-wallet">Twój portfel</h2><span class="note">start: 100 $</span></div>
+      <div class="panel" id="x-wallet"></div>
+    </section>
+
+    <section aria-labelledby="h-hist">
+      <h2 id="h-hist">Historia zleceń</h2>
+      <div class="panel" id="x-hist"></div>
+    </section>
+  </div>
 
   <footer class="foot">
-    <p>Dane: dzienne ceny zamknięcia z Binance (w aplikacji Claude z Yahoo Finance przez Stocklake). Wbudowana kopia kończy się 05.10.2026; po odświeżeniu strona pobiera nowe dane.</p>
-    <p>To projekt do nauki, nie porada inwestycyjna. Dobry wynik w przeszłości nie oznacza zysku w przyszłości.</p>
+    <p>Krypto: ceny na żywo z publicznego API Binance. Akcje: Yahoo Finance, odświeżane automatycznie co około 15 minut w dni robocze, więc są opóźnione. Akcje GPW są w złotówkach i przeliczane na dolary po bieżącym kursie.</p>
+    <p>Prowizja w symulacji: 0,1% od każdej transakcji. To projekt do nauki, nie porada inwestycyjna.</p>
   </footer>
 </div>
 
 <script>
 const SNAP = {"BTC":[["2025-10-06",124752.53],["2025-10-07",121451.38],["2025-10-08",123354.87],["2025-10-09",121705.59],["2025-10-10",113214.37],["2025-10-11",110807.88],["2025-10-12",115169.77],["2025-10-13",115271.08],["2025-10-14",113118.66],["2025-10-15",110783.16],["2025-10-16",108186.04],["2025-10-17",106467.79],["2025-10-18",107198.27],["2025-10-19",108666.71],["2025-10-20",110588.93],["2025-10-21",108476.89],["2025-10-22",107688.59],["2025-10-23",110069.73],["2025-10-24",111033.92],["2025-10-25",111641.73],["2025-10-26",114472.45],["2025-10-27",114119.33],["2025-10-28",112956.16],["2025-10-29",110055.3],["2025-10-30",108305.55],["2025-10-31",109556.16],["2025-11-01",110064.02],["2025-11-02",110639.62],["2025-11-03",106547.52],["2025-11-04",101590.52],["2025-11-05",103891.84],["2025-11-06",101301.29],["2025-11-07",103372.41],["2025-11-08",102282.12],["2025-11-09",104719.64],["2025-11-10",105996.59],["2025-11-11",102997.47],["2025-11-12",101663.19],["2025-11-13",99697.49],["2025-11-14",94397.79],["2025-11-15",95549.15],["2025-11-16",94177.08],["2025-11-17",92093.88],["2025-11-18",92948.88],["2025-11-19",91465.99],["2025-11-20",86631.9],["2025-11-21",85090.69],["2025-11-22",84648.36],["2025-11-23",86805.01],["2025-11-24",88270.56],["2025-11-25",87341.89],["2025-11-26",90518.37],["2025-11-27",91285.38],["2025-11-28",90919.27],["2025-11-29",90851.76],["2025-11-30",90394.31],["2025-12-01",86321.57],["2025-12-02",91350.2],["2025-12-03",93527.8],["2025-12-04",92141.62],["2025-12-05",89387.76],["2025-12-06",89272.38],["2025-12-07",90405.64],["2025-12-08",90640.2],["2025-12-09",92691.71],["2025-12-10",92020.95],["2025-12-11",92511.34],["2025-12-12",90270.41],["2025-12-13",90298.71],["2025-12-14",88175.18],["2025-12-15",86419.78],["2025-12-16",87843.98],["2025-12-17",86143.76],["2025-12-18",85462.51],["2025-12-19",88103.38],["2025-12-20",88344],["2025-12-21",88621.75],["2025-12-22",88490.02],["2025-12-23",87414],["2025-12-24",87611.96],["2025-12-25",87234.74],["2025-12-26",87301.43],["2025-12-27",87802.16],["2025-12-28",87835.84],["2025-12-29",87138.14],["2025-12-30",88430.13],["2025-12-31",87508.83],["2026-01-01",88731.98],["2026-01-02",89944.7],["2026-01-03",90603.19],["2026-01-04",91413.49],["2026-01-05",93882.55],["2026-01-06",93729.03],["2026-01-07",91308.05],["2026-01-08",91027.12],["2026-01-09",90513.1],["2026-01-10",90386.65],["2026-01-11",90827.46],["2026-01-12",91192.99],["2026-01-13",95321.78],["2026-01-14",96929.33],["2026-01-15",95551.19],["2026-01-16",95525.12],["2026-01-17",95099.92],["2026-01-18",93634.43],["2026-01-19",92553.59],["2026-01-20",88310.91],["2026-01-21",89376.96],["2026-01-22",89462.45],["2026-01-23",89503.88],["2026-01-24",89110.73],["2026-01-25",86572.22],["2026-01-26",88267.14],["2026-01-27",89102.57],["2026-01-28",89184.57],["2026-01-29",84561.59],["2026-01-30",84128.66],["2026-01-31",78621.12],["2026-02-01",76974.45],["2026-02-02",78688.77],["2026-02-03",75633.55],["2026-02-04",73019.7],["2026-02-05",62702.1],["2026-02-06",70555.39],["2026-02-07",69281.97],["2026-02-08",70264.73],["2026-02-09",70120.78],["2026-02-10",68793.96],["2026-02-11",66991.97],["2026-02-12",66221.84],["2026-02-13",68857.84],["2026-02-14",69767.62],["2026-02-15",68788.19],["2026-02-16",68843.16],["2026-02-17",67494.22],["2026-02-18",66425.32],["2026-02-19",66957.52],["2026-02-20",68005.42],["2026-02-21",68003.77],["2026-02-22",67659.39],["2026-02-23",64616.74],["2026-02-24",64080.04],["2026-02-25",67960.12],["2026-02-26",67453.77],["2026-02-27",65881.8],["2026-02-28",66995.86],["2026-03-01",65738.1],["2026-03-02",68775.85],["2026-03-03",68293.65],["2026-03-04",72710.58],["2026-03-05",70841.12],["2026-03-06",68136.49],["2026-03-07",67272.59],["2026-03-08",65969.78],["2026-03-09",68402.38],["2026-03-10",69926.92],["2026-03-11",70204.88],["2026-03-12",70493.46],["2026-03-13",70968.27],["2026-03-14",71214.62],["2026-03-15",72789.91],["2026-03-16",74861.09],["2026-03-17",73922.48],["2026-03-18",71245.58],["2026-03-19",69912.79],["2026-03-20",70522.59],["2026-03-21",68711.52],["2026-03-22",67845.21],["2026-03-23",70914.86],["2026-03-24",70517.86],["2026-03-25",71309.88],["2026-03-26",68791.62],["2026-03-27",66338.38],["2026-03-28",66319.7],["2026-03-29",65954.92],["2026-03-30",66691.45],["2026-03-31",68233.31],["2026-04-01",68078.55],["2026-04-02",66888.57],["2026-04-03",66931.1],["2026-04-04",67290.52],["2026-04-05",68981.9],["2026-04-06",68859.83],["2026-04-07",71940.7],["2026-04-08",71123.36],["2026-04-09",71767.83],["2026-04-10",72979.05],["2026-04-11",73054.27],["2026-04-12",70753.41],["2026-04-13",74484.64],["2026-04-14",74181.61],["2026-04-15",74805.08],["2026-04-16",75152.13],["2026-04-17",77126.88],["2026-04-18",75726.21],["2026-04-19",73856.35],["2026-04-20",75872.52],["2026-04-21",76352.77],["2026-04-22",78203.1],["2026-04-23",78268.95],["2026-04-24",77455.31],["2026-04-25",77612.02],["2026-04-26",78657.54],["2026-04-27",77366.62],["2026-04-28",76350.67],["2026-04-29",75776.13],["2026-04-30",76304.32],["2026-05-01",78179],["2026-05-02",78657.25],["2026-05-03",78538.23],["2026-05-04",79827.91],["2026-05-05",80927.05],["2026-05-06",81427.53],["2026-05-07",80009.99],["2026-05-08",80186.77],["2026-05-09",80664.37],["2026-05-10",82138.93],["2026-05-11",81728.3],["2026-05-12",80477.49],["2026-05-13",79277.12],["2026-05-14",81051.25],["2026-05-15",79065.68],["2026-05-16",78131.44],["2026-05-17",77429.35],["2026-05-18",76954.17],["2026-05-19",76750.91],["2026-05-20",77457.77],["2026-05-21",77539.17],["2026-05-22",75488.24],["2026-05-23",76673.37],["2026-05-24",76981.12],["2026-05-25",77279.93],["2026-05-26",75825.73],["2026-05-27",74344.7],["2026-05-28",73536.55],["2026-05-29",73372.52],["2026-05-30",73754.84],["2026-05-31",73579.69],["2026-06-01",71319.77],["2026-06-02",66703.66],["2026-06-03",64014.37],["2026-06-04",63801.57],["2026-06-05",60922.67],["2026-06-06",60867.41],["2026-06-07",63239.52],["2026-06-08",63090.59],["2026-06-09",61643.78],["2026-06-10",61449.29],["2026-06-11",63561.05],["2026-06-12",63543.2],["2026-06-13",64421.32],["2026-06-14",65710.4],["2026-06-15",66289.5],["2026-06-16",65600.64],["2026-06-17",64418.45],["2026-06-18",62896.47],["2026-06-19",63540.84],["2026-06-20",64239.68],["2026-06-21",63237.54],["2026-06-22",63952.11],["2026-06-23",62668.02],["2026-06-24",60995.13],["2026-06-25",59721.68],["2026-06-26",60016.43],["2026-06-27",59940.1],["2026-06-28",59532.34],["2026-06-29",60138.38],["2026-06-30",58558.86],["2026-07-01",60003.76],["2026-07-02",61485.3],["2026-07-03",62544.2],["2026-07-04",63088.3],["2026-07-05",63547.88],["2026-07-06",63995.02],["2026-07-07",63297.39],["2026-07-08",62257.57],["2026-07-09",63193.15],["2026-07-10",64127.14],["2026-07-11",63802.03],["2026-07-12",63758.22],["2026-07-13",62239.12],["2026-07-14",64956.11],["2026-07-15",64712.38],["2026-07-16",63789.28],["2026-07-17",63899.46],["2026-07-18",64796.6],["2026-07-19",64690.8],["2026-07-20",65230.03],["2026-07-21",66505.12],["2026-07-22",66100.8],["2026-07-23",65044.81],["2026-07-24",64098.5],["2026-07-25",64311.81],["2026-07-26",65340.3],["2026-07-27",63724.9],["2026-07-28",63871.36],["2026-07-29",63908.17],["2026-07-30",64725.31],["2026-07-31",62813.75],["2026-08-01",62763.32],["2026-08-02",63482],["2026-08-03",63460.9],["2026-08-04",64055.95],["2026-08-05",64597.5],["2026-08-06",64262.11],["2026-08-07",64880.19],["2026-08-08",64904.69],["2026-08-09",64844.89],["2026-08-10",63910.59],["2026-08-11",63551.88],["2026-08-12",63402.43],["2026-08-13",63402.17],["2026-08-14",62975.59],["2026-08-15",63024.32],["2026-08-16",62818.65],["2026-08-17",64506.25],["2026-08-18",64680.71],["2026-08-19",69266.19],["2026-08-20",73032.76],["2026-08-21",78335.19],["2026-08-22",77083.41],["2026-08-23",77755.27],["2026-08-24",78964.48],["2026-08-25",78564.98],["2026-08-26",79027.42],["2026-08-27",80257.54],["2026-08-28",77830.29],["2026-08-29",78245.81],["2026-08-30",77667.57],["2026-08-31",78548.63],["2026-09-01",77403.62],["2026-09-02",77300.48],["2026-09-03",81271.74],["2026-09-04",79671.97],["2026-09-05",79823.87],["2026-09-06",80350.05],["2026-09-07",79115.85],["2026-09-08",78438.58],["2026-09-09",78259.52],["2026-09-10",76568.12],["2026-09-11",77173.8],["2026-09-12",77270.47],["2026-09-13",76838.16],["2026-09-14",78163.38],["2026-09-15",75612.51],["2026-09-16",76150.32],["2026-09-17",76403.77],["2026-09-18",80901.46],["2026-09-19",81233.68],["2026-09-20",80345.99],["2026-09-21",86602.91],["2026-09-22",86172.28],["2026-09-23",84383.01],["2026-09-24",84379.06],["2026-09-25",84034.92],["2026-09-26",84406.45],["2026-09-27",84458.09],["2026-09-28",83502.61],["2026-09-29",83622.43],["2026-09-30",83553.85],["2026-10-01",84853.1],["2026-10-02",84497.21],["2026-10-03",84763.58],["2026-10-04",86480.3],["2026-10-05",85786.59]],"ETH":[["2025-10-06",4687.77],["2025-10-07",4451.15],["2025-10-08",4527.65],["2025-10-09",4369.14],["2025-10-10",3843.01],["2025-10-11",3750.61],["2025-10-12",4164.43],["2025-10-13",4245.47],["2025-10-14",4125.41],["2025-10-15",3987.46],["2025-10-16",3894.75],["2025-10-17",3832.56],["2025-10-18",3890.35],["2025-10-19",3984.65],["2025-10-20",3980.76],["2025-10-21",3876.76],["2025-10-22",3808.12],["2025-10-23",3856.03],["2025-10-24",3934.57],["2025-10-25",3953.47],["2025-10-26",4157.99],["2025-10-27",4120.12],["2025-10-28",3982.26],["2025-10-29",3903.35],["2025-10-30",3804.38],["2025-10-31",3847.08],["2025-11-01",3874.19],["2025-11-02",3911.06],["2025-11-03",3602.31],["2025-11-04",3292.57],["2025-11-05",3425.17],["2025-11-06",3312.26],["2025-11-07",3435.3],["2025-11-08",3400.38],["2025-11-09",3582.62],["2025-11-10",3568.46],["2025-11-11",3415.28],["2025-11-12",3413.09],["2025-11-13",3232.76],["2025-11-14",3103.79],["2025-11-15",3166.63],["2025-11-16",3092.85],["2025-11-17",3024.54],["2025-11-18",3122.98],["2025-11-19",3023.07],["2025-11-20",2831.78],["2025-11-21",2765.7],["2025-11-22",2767.61],["2025-11-23",2801.68],["2025-11-24",2952.71],["2025-11-25",2957.94],["2025-11-26",3027.81],["2025-11-27",3014.54],["2025-11-28",3032.3],["2025-11-29",2991.69],["2025-11-30",2992.11],["2025-12-01",2800.19],["2025-12-02",2997.94],["2025-12-03",3191.57],["2025-12-04",3134.32],["2025-12-05",3024.43],["2025-12-06",3040.21],["2025-12-07",3061.3],["2025-12-08",3125.2],["2025-12-09",3321.11],["2025-12-10",3325.39],["2025-12-11",3237.06],["2025-12-12",3084.17],["2025-12-13",3116.7],["2025-12-14",3060.59],["2025-12-15",2964.18],["2025-12-16",2964.18],["2025-12-17",2831.4],["2025-12-18",2827.07],["2025-12-19",2977.97],["2025-12-20",2977.58],["2025-12-21",3001.61],["2025-12-22",3006.07],["2025-12-23",2963.37],["2025-12-24",2945.59],["2025-12-25",2903.58],["2025-12-26",2925.75],["2025-12-27",2948.0],["2025-12-28",2948.57],["2025-12-29",2934.54],["2025-12-30",2971.42],["2025-12-31",2967.04],["2026-01-01",3000.39],["2026-01-02",3124.42],["2026-01-03",3125.92],["2026-01-04",3140.71],["2026-01-05",3226.13],["2026-01-06",3295.95],["2026-01-07",3166.84],["2026-01-08",3104.38],["2026-01-09",3083.05],["2026-01-10",3082.4],["2026-01-11",3118.89],["2026-01-12",3092.33],["2026-01-13",3322.1],["2026-01-14",3354.72],["2026-01-15",3317.1],["2026-01-16",3295.48],["2026-01-17",3308.86],["2026-01-18",3281.16],["2026-01-19",3186.62],["2026-01-20",2935.61],["2026-01-21",2978.9],["2026-01-22",2949.63],["2026-01-23",2953.26],["2026-01-24",2948.74],["2026-01-25",2815.9],["2026-01-26",2926.46],["2026-01-27",3022.21],["2026-01-28",3006.61],["2026-01-29",2818.23],["2026-01-30",2702.38],["2026-01-31",2445.09],["2026-02-01",2267.96],["2026-02-02",2344.36],["2026-02-03",2227.56],["2026-02-04",2143.5],["2026-02-05",1821.68],["2026-02-06",2063.39],["2026-02-07",2090.55],["2026-02-08",2088.76],["2026-02-09",2103.57],["2026-02-10",2019.5],["2026-02-11",1940.62],["2026-02-12",1946.94],["2026-02-13",2048.53],["2026-02-14",2086.01],["2026-02-15",1966.04],["2026-02-16",1997.92],["2026-02-17",1992.19],["2026-02-18",1953.97],["2026-02-19",1948.2],["2026-02-20",1969.02],["2026-02-21",1973.74],["2026-02-22",1957.81],["2026-02-23",1855.5],["2026-02-24",1852.97],["2026-02-25",2054.63],["2026-02-26",2026.79],["2026-02-27",1930.76],["2026-02-28",1965.05],["2026-03-01",1939.07],["2026-03-02",2027.27],["2026-03-03",1982.77],["2026-03-04",2126.51],["2026-03-05",2071.61],["2026-03-06",1978.75],["2026-03-07",1969.46],["2026-03-08",1936.6],["2026-03-09",1992.94],["2026-03-10",2037.12],["2026-03-11",2051.57],["2026-03-12",2073.14],["2026-03-13",2092.56],["2026-03-14",2097.09],["2026-03-15",2177.48],["2026-03-16",2351.18],["2026-03-17",2318.05],["2026-03-18",2203.67],["2026-03-19",2137.42],["2026-03-20",2146.5],["2026-03-21",2076.69],["2026-03-22",2053.05],["2026-03-23",2152.15],["2026-03-24",2155.7],["2026-03-25",2168.02],["2026-03-26",2059.58],["2026-03-27",1991.27],["2026-03-28",1992.69],["2026-03-29",1982.56],["2026-03-30",2023.51],["2026-03-31",2104.71],["2026-04-01",2138.74],["2026-04-02",2056.85],["2026-04-03",2053.39],["2026-04-04",2065.35],["2026-04-05",2109.0],["2026-04-06",2107.76],["2026-04-07",2241.81],["2026-04-08",2190.34],["2026-04-09",2189.14],["2026-04-10",2245.15],["2026-04-11",2285.39],["2026-04-12",2192.2],["2026-04-13",2370.71],["2026-04-14",2323.31],["2026-04-15",2359.44],["2026-04-16",2348.65],["2026-04-17",2421.07],["2026-04-18",2351.1],["2026-04-19",2264.92],["2026-04-20",2315.21],["2026-04-21",2327.97],["2026-04-22",2376.09],["2026-04-23",2331.51],["2026-04-24",2315.69],["2026-04-25",2318.83],["2026-04-26",2369.73],["2026-04-27",2303.06],["2026-04-28",2289.42],["2026-04-29",2253.42],["2026-04-30",2256.25],["2026-05-01",2295.09],["2026-05-02",2316.23],["2026-05-03",2321.64],["2026-05-04",2346.4],["2026-05-05",2361.18],["2026-05-06",2350.8],["2026-05-07",2291.11],["2026-05-08",2306.97],["2026-05-09",2326.73],["2026-05-10",2369.04],["2026-05-11",2339.36],["2026-05-12",2285.76],["2026-05-13",2257.58],["2026-05-14",2280.93],["2026-05-15",2223.33],["2026-05-16",2179.75],["2026-05-17",2127.65],["2026-05-18",2128.52],["2026-05-19",2109.96],["2026-05-20",2126.98],["2026-05-21",2131.41],["2026-05-22",2064.64],["2026-05-23",2115.95],["2026-05-24",2097.99],["2026-05-25",2111.37],["2026-05-26",2070.86],["2026-05-27",2022.2],["2026-05-28",2007.55],["2026-05-29",2011.98],["2026-05-30",2019.46],["2026-05-31",2004.34],["2026-06-01",2003.22],["2026-06-02",1857.72],["2026-06-03",1811.73],["2026-06-04",1769.58],["2026-06-05",1580.86],["2026-06-06",1568.77],["2026-06-07",1686.4],["2026-06-08",1690.15],["2026-06-09",1637.71],["2026-06-10",1620.14],["2026-06-11",1672.28],["2026-06-12",1665.13],["2026-06-13",1680.21],["2026-06-14",1724.61],["2026-06-15",1794.96],["2026-06-16",1790.4],["2026-06-17",1747.89],["2026-06-18",1709.53],["2026-06-19",1710.98],["2026-06-20",1739.3],["2026-06-21",1704.58],["2026-06-22",1726.51],["2026-06-23",1665.44],["2026-06-24",1619.92],["2026-06-25",1564.82],["2026-06-26",1576.62],["2026-06-27",1571.59],["2026-06-28",1570.36],["2026-06-29",1610.21],["2026-06-30",1569.58],["2026-07-01",1608.96],["2026-07-02",1698.17],["2026-07-03",1756.52],["2026-07-04",1779.03],["2026-07-05",1783.01],["2026-07-06",1797.57],["2026-07-07",1768.51],["2026-07-08",1742.68],["2026-07-09",1744.48],["2026-07-10",1795.69],["2026-07-11",1788.1],["2026-07-12",1805.79],["2026-07-13",1773.5],["2026-07-14",1889.48],["2026-07-15",1916.94],["2026-07-16",1863.19],["2026-07-17",1840.99],["2026-07-18",1861.39],["2026-07-19",1871.51],["2026-07-20",1903.76],["2026-07-21",1928.38],["2026-07-22",1933.49],["2026-07-23",1877.1],["2026-07-24",1860.18],["2026-07-25",1873.22],["2026-07-26",1953.41],["2026-07-27",1890.61],["2026-07-28",1919.95],["2026-07-29",1908.52],["2026-07-30",1917.37],["2026-07-31",1860.35],["2026-08-01",1843.42],["2026-08-02",1882.52],["2026-08-03",1858.26],["2026-08-04",1868.39],["2026-08-05",1906.53],["2026-08-06",1902.06],["2026-08-07",1913.28],["2026-08-08",1915.53],["2026-08-09",1908.68],["2026-08-10",1871.28],["2026-08-11",1881.37],["2026-08-12",1878.14],["2026-08-13",1883.99],["2026-08-14",1880.65],["2026-08-15",1880.91],["2026-08-16",1873.94],["2026-08-17",1912.2],["2026-08-18",1916.46],["2026-08-19",2251.46],["2026-08-20",2326.38],["2026-08-21",2515.28],["2026-08-22",2424.25],["2026-08-23",2463.82],["2026-08-24",2481.83],["2026-08-25",2443.16],["2026-08-26",2506.26],["2026-08-27",2510.41],["2026-08-28",2442.54],["2026-08-29",2457.69],["2026-08-30",2417.94],["2026-08-31",2466.82],["2026-09-01",2417.84],["2026-09-02",2391.5],["2026-09-03",2508.02],["2026-09-04",2456.08],["2026-09-05",2480.74],["2026-09-06",2514.55],["2026-09-07",2490.96],["2026-09-08",2484.94],["2026-09-09",2466.91],["2026-09-10",2437.1],["2026-09-11",2514.73],["2026-09-12",2525.94],["2026-09-13",2477.02],["2026-09-14",2514.41],["2026-09-15",2399.09],["2026-09-16",2416.12],["2026-09-17",2447.11],["2026-09-18",2611.35],["2026-09-19",2631.96],["2026-09-20",2643.0],["2026-09-21",2776.47],["2026-09-22",2752.63],["2026-09-23",2684.69],["2026-09-24",2687.3],["2026-09-25",2690.48],["2026-09-26",2695.21],["2026-09-27",2686.93],["2026-09-28",2688.67],["2026-09-29",2676.72],["2026-09-30",2683.68],["2026-10-01",2705.54],["2026-10-02",2668.15],["2026-10-03",2687.26],["2026-10-04",2726.51],["2026-10-05",2711.03]],"SOL":[["2025-10-06",232.516],["2025-10-07",220.4827],["2025-10-08",229.1012],["2025-10-09",220.9911],["2025-10-10",188.6639],["2025-10-11",178.0542],["2025-10-12",197.5085],["2025-10-13",208.3673],["2025-10-14",202.4603],["2025-10-15",194.0219],["2025-10-16",184.6889],["2025-10-17",182.0348],["2025-10-18",187.6603],["2025-10-19",187.7982],["2025-10-20",189.7507],["2025-10-21",185.6663],["2025-10-22",180.1481],["2025-10-23",191.3883],["2025-10-24",193.5602],["2025-10-25",194.0404],["2025-10-26",200.0286],["2025-10-27",198.7417],["2025-10-28",194.4428],["2025-10-29",194.4109],["2025-10-30",184.6244],["2025-10-31",187.2095],["2025-11-01",186.3801],["2025-11-02",187.826],["2025-11-03",166.0907],["2025-11-04",155.4032],["2025-11-05",162.5661],["2025-11-06",155.0659],["2025-11-07",161.7082],["2025-11-08",158.1025],["2025-11-09",164.4538],["2025-11-10",167.367],["2025-11-11",154.5683],["2025-11-12",153.262],["2025-11-13",145.1085],["2025-11-14",138.6766],["2025-11-15",139.5352],["2025-11-16",137.2657],["2025-11-17",130.8483],["2025-11-18",140.7144],["2025-11-19",136.767],["2025-11-20",133.5172],["2025-11-21",128.5005],["2025-11-22",127.5512],["2025-11-23",130.7051],["2025-11-24",138.3714],["2025-11-25",138.8911],["2025-11-26",143.0122],["2025-11-27",140.8464],["2025-11-28",137.3902],["2025-11-29",136.0817],["2025-11-30",133.5648],["2025-12-01",126.709],["2025-12-02",138.6742],["2025-12-03",144.8985],["2025-12-04",139.0145],["2025-12-05",133.323],["2025-12-06",132.3484],["2025-12-07",132.0936],["2025-12-08",133.2782],["2025-12-09",137.9016],["2025-12-10",136.469],["2025-12-11",136.3716],["2025-12-12",132.3243],["2025-12-13",133.2475],["2025-12-14",129.4811],["2025-12-15",127.7571],["2025-12-16",129.2512],["2025-12-17",123.1198],["2025-12-18",119.5702],["2025-12-19",126.1927],["2025-12-20",125.809],["2025-12-21",125.9915],["2025-12-22",125.8012],["2025-12-23",123.8572],["2025-12-24",122.4586],["2025-12-25",119.9471],["2025-12-26",122.196],["2025-12-27",124.6477],["2025-12-28",125.1994],["2025-12-29",123.1252],["2025-12-30",124.9313],["2025-12-31",124.4845],["2026-01-01",126.7611],["2026-01-02",132.1337],["2026-01-03",133.2985],["2026-01-04",133.8996],["2026-01-05",137.99],["2026-01-06",141.0984],["2026-01-07",136.313],["2026-01-08",138.2934],["2026-01-09",135.7564],["2026-01-10",135.727],["2026-01-11",139.4905],["2026-01-12",139.1362],["2026-01-13",145.3609],["2026-01-14",146.7528],["2026-01-15",142.3324],["2026-01-16",144.8605],["2026-01-17",143.7257],["2026-01-18",137.9954],["2026-01-19",133.3387],["2026-01-20",125.7057],["2026-01-21",129.3791],["2026-01-22",128.2883],["2026-01-23",127.3616],["2026-01-24",127.0538],["2026-01-25",118.7729],["2026-01-26",124.1397],["2026-01-27",127.0548],["2026-01-28",125.1184],["2026-01-29",117.6058],["2026-01-30",117.363],["2026-01-31",105.4417],["2026-02-01",100.8505],["2026-02-02",104.4712],["2026-02-03",97.5639],["2026-02-04",92.0293],["2026-02-05",78.1874],["2026-02-06",87.4648],["2026-02-07",87.6398],["2026-02-08",87.0441],["2026-02-09",86.7018],["2026-02-10",82.9155],["2026-02-11",79.2542],["2026-02-12",78.3484],["2026-02-13",84.3225],["2026-02-14",88.1608],["2026-02-15",86.0051],["2026-02-16",86.4288],["2026-02-17",85.1976],["2026-02-18",81.5669],["2026-02-19",82.3932],["2026-02-20",84.6351],["2026-02-21",85.2111],["2026-02-22",82.791],["2026-02-23",77.7533],["2026-02-24",79.0365],["2026-02-25",87.9156],["2026-02-26",85.9091],["2026-02-27",81.9515],["2026-02-28",84.3662],["2026-03-01",83.5777],["2026-03-02",86.6345],["2026-03-03",87.0198],["2026-03-04",90.8343],["2026-03-05",88.6911],["2026-03-06",84.6818],["2026-03-07",83.18],["2026-03-08",81.6246],["2026-03-09",84.9362],["2026-03-10",85.8382],["2026-03-11",86.5649],["2026-03-12",86.8678],["2026-03-13",88.1533],["2026-03-14",88.0707],["2026-03-15",92.2518],["2026-03-16",96.2237],["2026-03-17",94.706],["2026-03-18",90.0657],["2026-03-19",88.9178],["2026-03-20",89.8536],["2026-03-21",87.4654],["2026-03-22",86.1283],["2026-03-23",91.4241],["2026-03-24",90.8224],["2026-03-25",91.7082],["2026-03-26",86.4439],["2026-03-27",83.0188],["2026-03-28",82.0156],["2026-03-29",81.4224],["2026-03-30",82.4441],["2026-03-31",83.1065],["2026-04-01",81.1953],["2026-04-02",78.9513],["2026-04-03",80.3685],["2026-04-04",80.8084],["2026-04-05",81.8545],["2026-04-06",80.1516],["2026-04-07",85.648],["2026-04-08",82.5817],["2026-04-09",83.2977],["2026-04-10",84.8285],["2026-04-11",84.9488],["2026-04-12",81.5352],["2026-04-13",86.6566],["2026-04-14",83.7746],["2026-04-15",84.9193],["2026-04-16",88.9942],["2026-04-17",88.8742],["2026-04-18",86.2027],["2026-04-19",83.5809],["2026-04-20",85.333],["2026-04-21",86.0295],["2026-04-22",86.9158],["2026-04-23",86.1411],["2026-04-24",86.2319],["2026-04-25",86.1512],["2026-04-26",86.9704],["2026-04-27",84.8178],["2026-04-28",84.039],["2026-04-29",83.0269],["2026-04-30",83.0238],["2026-05-01",83.7235],["2026-05-02",84.2766],["2026-05-03",83.8996],["2026-05-04",84.0899],["2026-05-05",86.3192],["2026-05-06",89.145],["2026-05-07",88.4048],["2026-05-08",91.9498],["2026-05-09",93.1455],["2026-05-10",96.427],["2026-05-11",97.3502],["2026-05-12",94.95],["2026-05-13",91.0855],["2026-05-14",92.1487],["2026-05-15",89.2004],["2026-05-16",86.5365],["2026-05-17",85.173],["2026-05-18",85.2969],["2026-05-19",84.2086],["2026-05-20",86.0419],["2026-05-21",87.1562],["2026-05-22",84.3071],["2026-05-23",85.6585],["2026-05-24",85.2497],["2026-05-25",85.0105],["2026-05-26",83.5865],["2026-05-27",82.3681],["2026-05-28",81.9854],["2026-05-29",81.9325],["2026-05-30",82.5473],["2026-05-31",82.2983],["2026-06-01",81.087],["2026-06-02",74.1429],["2026-06-03",71.6124],["2026-06-04",68.7189],["2026-06-05",63.4869],["2026-06-06",62.1898],["2026-06-07",66.3106],["2026-06-08",66.795],["2026-06-09",64.9621],["2026-06-10",63.161],["2026-06-11",66.822],["2026-06-12",66.7493],["2026-06-13",68.8728],["2026-06-14",71.1662],["2026-06-15",73.9793],["2026-06-16",73.4138],["2026-06-17",71.931],["2026-06-18",69.6265],["2026-06-19",69.7206],["2026-06-20",73.1727],["2026-06-21",72.4182],["2026-06-22",71.9082],["2026-06-23",69.6437],["2026-06-24",67.9825],["2026-06-25",67.5741],["2026-06-26",71.8354],["2026-06-27",70.4107],["2026-06-28",71.3129],["2026-06-29",74.9468],["2026-06-30",73.5233],["2026-07-01",77.3837],["2026-07-02",80.644],["2026-07-03",82.2801],["2026-07-04",81.6496],["2026-07-05",81.423],["2026-07-06",81.9152],["2026-07-07",80.6487],["2026-07-08",77.787],["2026-07-09",78.0455],["2026-07-10",78.0666],["2026-07-11",76.8242],["2026-07-12",76.8738],["2026-07-13",74.8614],["2026-07-14",77.7624],["2026-07-15",77.2641],["2026-07-16",75.272],["2026-07-17",75.0116],["2026-07-18",75.4609],["2026-07-19",76.3553],["2026-07-20",77.7919],["2026-07-21",78.1086],["2026-07-22",77.9063],["2026-07-23",75.8598],["2026-07-24",73.8799],["2026-07-25",74.4286],["2026-07-26",76.6022],["2026-07-27",74.1418],["2026-07-28",73.6991],["2026-07-29",73.5972],["2026-07-30",74.468],["2026-07-31",72.7897],["2026-08-01",71.8663],["2026-08-02",73.4488],["2026-08-03",73.4737],["2026-08-04",73.7178],["2026-08-05",73.9614],["2026-08-06",72.5765],["2026-08-07",73.6427],["2026-08-08",75.9722],["2026-08-09",76.2121],["2026-08-10",75.9452],["2026-08-11",76.1951],["2026-08-12",75.5255],["2026-08-13",76.1773],["2026-08-14",75.3273],["2026-08-15",75.2723],["2026-08-16",74.539],["2026-08-17",75.9441],["2026-08-18",77.0312],["2026-08-19",85.3745],["2026-08-20",87.6369],["2026-08-21",93.6536],["2026-08-22",93.9125],["2026-08-23",95.4422],["2026-08-24",98.5617],["2026-08-25",96.6035],["2026-08-26",102.1674],["2026-08-27",109.2082],["2026-08-28",104.127],["2026-08-29",105.652],["2026-08-30",101.8767],["2026-08-31",102.9969],["2026-09-01",99.9869],["2026-09-02",100.3856],["2026-09-03",103.9784],["2026-09-04",101.9495],["2026-09-05",103.1876],["2026-09-06",106.4476],["2026-09-07",103.8662],["2026-09-08",103.3251],["2026-09-09",101.6081],["2026-09-10",98.6899],["2026-09-11",102.3962],["2026-09-12",101.7856],["2026-09-13",99.2458],["2026-09-14",102.4951],["2026-09-15",96.8884],["2026-09-16",98.6419],["2026-09-17",101.6034],["2026-09-18",112.5992],["2026-09-19",111.0149],["2026-09-20",111.1329],["2026-09-21",118.7501],["2026-09-22",118.5074],["2026-09-23",114.9753],["2026-09-24",117.0091],["2026-09-25",122.0097],["2026-09-26",121.4256],["2026-09-27",122.0587],["2026-09-28",118.8367],["2026-09-29",119.0555],["2026-09-30",117.9948],["2026-10-01",118.3978],["2026-10-02",118.6151],["2026-10-03",119.6451],["2026-10-04",121.5286],["2026-10-05",120.7507]]};
-const COINS = {BTC:'Bitcoin', ETH:'Ethereum', SOL:'Solana'};
+const STOCKS_URL = 'https://raw.githubusercontent.com/Michajster/Trading_bot/data/stocks.json';
 const FEE = 0.001, CAP = 100;
-const PERIODS = [90, 180, 365];
-const state = {coin:'BTC', period:365, fast:10, slow:30, data:{...SNAP}, live:{}, lastPrice:{}, bot:null};
+const CRYPTO = {BTC:'Bitcoin', ETH:'Ethereum', SOL:'Solana'};
+const IVMS = {'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5,'1d':864e5};
+const IVLBL = {'5m':'5 min','15m':'15 min','1h':'1 h','4h':'4 h','1d':'1 dzień'};
+const MARKETS = {CR:'Krypto', US:'USA', PL:'GPW'};
 const $ = id => document.getElementById(id);
-const fmtUsd = v => v.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' $';
-const fmtPx = v => v.toLocaleString('pl-PL',{maximumFractionDigits: v<1000?2:0}) + ' $';
-const fmtPct = v => (v>=0?'+':'') + v.toLocaleString('pl-PL',{maximumFractionDigits:1}) + '%';
+const nf = (v,d=2) => v.toLocaleString('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtPct = v => (v>=0?'+':'') + nf(v,1) + '%';
 const cls = v => v>=0 ? 'up' : 'down';
-const fmtDate = s => { const [y,m,d] = s.split('-'); return `${d}.${m}.${y}`; };
+const pad = n => String(n).padStart(2,'0');
+function fmtT(ms, iv){ const d=new Date(ms); const day=`${pad(d.getDate())}.${pad(d.getMonth()+1)}`; return iv==='1d' ? `${day}.${d.getFullYear()}` : `${day} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)||'null'); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
 
-function sma(a, n){ const o = new Array(a.length).fill(null); let s=0; for(let i=0;i<a.length;i++){ s+=a[i]; if(i>=n) s-=a[i-n]; if(i>=n-1) o[i]=s/n; } return o; }
+// ---------------- data layer ----------------
+let stocks = null, stocksErr = null;
+async function loadStocks(force=false){
+  if(stocks && !force && Date.now()-stocks._fetched < 120000) return stocks;
+  try{
+    const r = await fetch(STOCKS_URL + '?t=' + Math.floor(Date.now()/60000), {cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    const j = await r.json(); j._fetched = Date.now(); stocks = j; stocksErr = null;
+  }catch(e){ stocksErr = 'Dane akcji nie są jeszcze gotowe. Pierwsze pobranie trwa kilka minut.'; }
+  return stocks;
+}
+function assetList(market){
+  if(market==='CR') return Object.entries(CRYPTO).map(([s,n])=>({sym:s,name:n,market:'CR',cur:'USD'}));
+  if(!stocks) return [];
+  return Object.entries(stocks.assets).filter(([,a])=>a.market===market).map(([s,a])=>({sym:s,name:a.name,market,cur:a.cur}));
+}
+function assetInfo(sym){ if(CRYPTO[sym]) return {sym,name:CRYPTO[sym],market:'CR',cur:'USD'}; const a=stocks?.assets?.[sym]; return a?{sym,name:a.name,market:a.market,cur:a.cur}:{sym,name:sym,market:sym.endsWith('.WA')?'PL':'US',cur:sym.endsWith('.WA')?'PLN':'USD'}; }
+const label = sym => sym.replace('.WA','');
+const curSym = cur => cur==='PLN' ? ' zł' : ' $';
+const fmtPx = (v,cur='USD') => nf(v, v<1?4:v<1000?2:0) + curSym(cur);
+const intervalsFor = market => market==='CR' ? ['5m','15m','1h','4h','1d'] : ['15m','1h','1d'];
 
-// Run the strategy on closes from index `start` to `end` (inclusive). Averages use all earlier history.
+async function binance(path){
+  for(const host of ['https://data-api.binance.vision','https://api.binance.com']){
+    try{ const r = await fetch(host+path); if(r.ok) return await r.json(); }catch(e){}
+  }
+  throw new Error('binance');
+}
+// closed candles only: [[openMs, close], ...]
+async function cryptoCandles(sym, iv, since){
+  const now = Date.now(); let out = [];
+  if(since==null){
+    const k = await binance(`/api/v3/klines?symbol=${sym}USDT&interval=${iv}&limit=1000`);
+    out = k.map(x=>[x[0], +x[4], x[6]]);
+  } else {
+    let t = since;
+    for(let p=0;p<12;p++){
+      const k = await binance(`/api/v3/klines?symbol=${sym}USDT&interval=${iv}&limit=1000&startTime=${t}`);
+      if(!k.length) break;
+      out = out.concat(k.map(x=>[x[0], +x[4], x[6]]));
+      if(k.length<1000) break;
+      t = k[k.length-1][0] + 1;
+    }
+  }
+  return out.filter(x=>x[2] < now).map(x=>[x[0], x[1]]);
+}
+function stockCandles(sym, iv){
+  const s = stocks?.assets?.[sym]?.iv?.[iv]; if(!s) return null;
+  const now = Date.now(), step = IVMS[iv];
+  return s.map(([t,c])=>[t*1000,c]).filter(([t])=> iv==='1d' ? t+step < now : t+step <= now);
+}
+async function candles(sym, iv, since){
+  if(CRYPTO[sym]){
+    try{ return await cryptoCandles(sym, iv, since); }
+    catch(e){ if(iv==='1d') return SNAP[sym].map(([d,c])=>[Date.parse(d+'T00:00:00Z'), c]); throw e; }
+  }
+  await loadStocks();
+  const s = stockCandles(sym, iv); if(!s) throw new Error('nostock');
+  return since==null ? s : s.filter(([t])=>t >= since);
+}
+function marketOpen(market){
+  if(market==='CR') return true;
+  const tz = market==='US' ? 'America/New_York' : 'Europe/Warsaw';
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:tz,weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()).map(p=>[p.type,p.value]));
+  if(parts.weekday==='Sat'||parts.weekday==='Sun') return false;
+  const m = (+parts.hour%24)*60 + +parts.minute;
+  return market==='US' ? (m>=570 && m<960) : (m>=540 && m<1020);
+}
+
+// ---------------- strategy ----------------
+function sma(a, n){ const o=new Array(a.length).fill(null); let s=0; for(let i=0;i<a.length;i++){ s+=a[i]; if(i>=n) s-=a[i-n]; if(i>=n-1) o[i]=s/n; } return o; }
 function run(closes, fast, slow, start, end=closes.length-1){
-  const F = sma(closes, fast), S = sma(closes, slow);
+  const F=sma(closes,fast), S=sma(closes,slow);
   const sig = i => (F[i]!=null && S[i]!=null && F[i]>S[i]) ? 1 : 0;
-  let pos = sig(start), e = CAP, h = CAP;
+  let pos=sig(start), e=CAP, h=CAP, fees=0;
   const eq=[e], hold=[h], trades=[];
-  if(pos){ e *= 1-FEE; eq[0]=e; trades.push({i:start, buy:true}); }
+  if(pos){ fees+=e*FEE; e*=1-FEE; eq[0]=e; trades.push({i:start,buy:true}); }
   for(let i=start+1;i<=end;i++){
-    const r = closes[i]/closes[i-1]-1;
-    e *= 1 + pos*r; h *= 1 + r;
-    const n = sig(i);
-    if(n!==pos){ e *= 1-FEE; trades.push({i, buy:n===1}); pos=n; }
+    const r=closes[i]/closes[i-1]-1; e*=1+pos*r; h*=1+r;
+    const n=sig(i); if(n!==pos){ fees+=e*FEE; e*=1-FEE; trades.push({i,buy:n===1}); pos=n; }
     eq.push(e); hold.push(h);
   }
-  let peak=-Infinity, dd=0; for(const v of eq){ peak=Math.max(peak,v); dd=Math.min(dd, v/peak-1); }
-  return {eq, hold, trades, F, S, pos, dd:dd*100};
+  let peak=-Infinity, dd=0; for(const v of eq){ peak=Math.max(peak,v); dd=Math.min(dd,v/peak-1); }
+  return {eq,hold,trades,F,S,pos,fees,dd:dd*100};
 }
 
-function series(){ return state.data[state.coin]; }
-
-// ---- charts (hand-drawn SVG) ----
-function svgLine(vals, x, y, color, w=2){ let d=''; vals.forEach((v,i)=>{ if(v==null) return; d += (d?'L':'M') + x(i).toFixed(1)+','+y(v).toFixed(1); }); return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`; }
-function niceTicks(lo, hi, n=4){ const span=hi-lo||1, step0=span/n, mag=Math.pow(10,Math.floor(Math.log10(step0))); const step=[1,2,2.5,5,10].map(k=>k*mag).find(s=>s>=step0); const t=[]; for(let v=Math.ceil(lo/step)*step; v<=hi+1e-9; v+=step) t.push(v); return t; }
-function drawChart(el, lines, dates, markers=[], fmt=v=>v){
-  const W=600,H=220,L=56,R=10,T=10,B=26;
-  const all = lines.flatMap(l=>l.vals).filter(v=>v!=null);
-  let lo=Math.min(...all), hi=Math.max(...all); const pad=(hi-lo)*.06||1; lo-=pad; hi+=pad;
-  const n=dates.length, x=i=>L+(W-L-R)*(n<2?0:i/(n-1)), y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+// ---------------- charts ----------------
+function niceTicks(lo,hi,n=4){ const span=hi-lo||1, s0=span/n, mag=Math.pow(10,Math.floor(Math.log10(s0))); const step=[1,2,2.5,5,10].map(k=>k*mag).find(s=>s>=s0); const t=[]; for(let v=Math.ceil(lo/step)*step; v<=hi+1e-9; v+=step) t.push(+v.toPrecision(12)); return t; }
+const shortNum = v => Math.abs(v)>=10000 ? nf(v/1000,0)+'k' : Math.abs(v)>=1000 ? nf(v/1000,1)+'k' : nf(v, v<10?2:0);
+function drawChart(el, lines, times, iv, markers=[], fmt=shortNum, H=220){
+  const W=600,L=56,R=10,T=10,B=26;
+  const all=lines.flatMap(l=>l.vals).filter(v=>v!=null);
+  if(!all.length){ el.innerHTML=''; return; }
+  let lo=Math.min(...all), hi=Math.max(...all); const p=(hi-lo)*.06||Math.abs(hi)*.01||1; lo-=p; hi+=p;
+  const n=times.length, x=i=>L+(W-L-R)*(n<2?0:i/(n-1)), y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
   let g='';
-  for(const t of niceTicks(lo,hi)){ g+=`<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(t)+4}" text-anchor="end" font-size="11" font-family="var(--mono)" fill="var(--muted)">${fmt(t)}</text>`; }
-  [0, Math.floor((n-1)/2), n-1].forEach((i,k)=>{ g+=`<text x="${x(i)}" y="${H-6}" text-anchor="${k===0?'start':k===2?'end':'middle'}" font-size="11" font-family="var(--mono)" fill="var(--muted)">${fmtDate(dates[i])}</text>`; });
-  for(const l of lines) g+=svgLine(l.vals,x,y,l.color,l.w||2);
-  for(const m of markers) g+=`<circle cx="${x(m.i)}" cy="${y(m.v)}" r="4.5" fill="${m.buy?'var(--up)':'var(--down)'}" stroke="var(--surface)" stroke-width="1.5"/>`;
-  const last = lines[0].vals[lines[0].vals.length-1];
-  if(last!=null) g+=`<circle cx="${x(n-1)}" cy="${y(last)}" r="4" fill="${lines[0].color}"/>`;
-  el.innerHTML = g;
-}
-const shortNum = v => Math.abs(v)>=1000 ? (v/1000).toLocaleString('pl-PL',{maximumFractionDigits:1})+'k' : v.toLocaleString('pl-PL',{maximumFractionDigits:v<10?1:0});
-
-// ---- UI ----
-function renderCoins(){
-  $('coins').innerHTML = Object.keys(COINS).map(c=>`<button class="coin" type="button" data-c="${c}" aria-pressed="${c===state.coin}">${c} <span style="opacity:.6">${COINS[c]}</span></button>`).join('');
-  $('coins').querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.coin=b.dataset.c; renderAll(); loadLive(); });
-  $('period').innerHTML = PERIODS.map(p=>`<button type="button" data-p="${p}" aria-pressed="${p===state.period}">${p} dni</button>`).join('');
-  $('period').querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.period=+b.dataset.p; renderAll(); });
-}
-function renderStatus(){
-  const s = series(), last = s[s.length-1];
-  $('price').textContent = fmtPx(state.lastPrice[state.coin] ?? last[1]);
-  const live = state.live[state.coin];
-  $('dot').className = 'dot' + (live==='ok' ? ' live' : '');
-  $('statusText').textContent = live==='ok' ? `Aktualne dane, ostatni dzień ${fmtDate(last[0])}`
-    : live==='loading' ? 'Pobieram świeże dane…'
-    : live ? live : `Zapisane dane do ${fmtDate(last[0])}`;
-}
-function renderBacktest(){
-  const s = series(), closes = s.map(r=>r[1]), dates = s.map(r=>r[0]);
-  const start = Math.max(0, s.length - state.period);
-  const r = run(closes, state.fast, state.slow, start);
-  const b = r.eq.at(-1), h = r.hold.at(-1);
-  $('botV').textContent = fmtUsd(b); $('botD').textContent = fmtPct((b/CAP-1)*100); $('botD').className='d '+cls(b-CAP);
-  $('holdV').textContent = fmtUsd(h); $('holdD').textContent = fmtPct((h/CAP-1)*100); $('holdD').className='d '+cls(h-CAP);
-  const diff = b-h;
-  $('facts').innerHTML = `<span>Transakcje: <b>${r.trades.length}</b></span><span>Największy spadek bota: <b>${r.dd.toLocaleString('pl-PL',{maximumFractionDigits:1})}%</b></span><span>Bot vs trzymanie: <b class="${cls(diff)}">${(diff>=0?'+':'')+fmtUsd(diff)}</b></span>`;
-  const d = dates.slice(start);
-  drawChart($('eqChart'), [{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}], d, [], v=>v.toFixed(0)+' $');
-  drawChart($('pxChart'), [{vals:closes.slice(start),color:'var(--ink)',w:1.5},{vals:r.F.slice(start),color:'var(--accent)',w:1.5},{vals:r.S.slice(start),color:'var(--hold)',w:1.5}], d,
-    r.trades.map(t=>({i:t.i-start, v:closes[t.i], buy:t.buy})), shortNum);
-}
-function renderFair(){
-  const s = series(), closes = s.map(r=>r[1]);
-  const start = Math.max(0, s.length - state.period), split = start + Math.floor((s.length-start)*2/3);
-  let best=null;
-  for(const f of [5,10,15,20,30]) for(const sl of [20,30,50,80,120]) if(f<sl){ const r=run(closes,f,sl,start,split); const v=r.eq.at(-1); if(!best||v>best.v) best={f,sl,v,h:r.hold.at(-1)}; }
-  const t = run(closes, best.f, best.sl, split);
-  const tb=t.eq.at(-1), th=t.hold.at(-1), days=s.length-1-split;
-  const beatTrain = best.v>best.h, beatTest = tb>th;
-  let msg;
-  if(beatTrain && beatTest) msg = 'Strategia wygrała z trzymaniem także na nowych danych. To dobry znak, ale jeden okres to wciąż mało, żeby mówić o przewadze.';
-  else if(beatTrain && !beatTest) msg = 'Na danych treningowych ustawienia wyglądały świetnie, a na nowych przegrały z trzymaniem. To klasyczne przeuczenie: dobra historia nie przenosi się na przyszłość.';
-  else if(!beatTrain && beatTest) msg = 'Nawet najlepsze ustawienia przegrały na treningu, a na nowych danych akurat wygrały. Taki wynik wygląda bardziej na przypadek niż na przewagę.';
-  else msg = 'Strategia przegrała z trzymaniem i na treningu, i na nowych danych. W tym okresie prostsze było po prostu kupić i czekać.';
-  $('fair').innerHTML = `
-    <div class="score">
-      <div><span class="k">Trening · najlepsze ${best.f}/${best.sl}</span><span class="v">${fmtUsd(best.v)}</span><span class="d">trzymanie: ${fmtUsd(best.h)}</span></div>
-      <div><span class="k">Nowe dane · ${days} dni</span><span class="v ${cls(tb-CAP)}">${fmtUsd(tb)}</span><span class="d">trzymanie: ${fmtUsd(th)}</span></div>
-    </div>
-    <p class="verdict">${msg}</p>
-    <div class="row"><button class="btn ghost" type="button" id="useBest">Ustaw ${best.f}/${best.sl} w kroku 1</button></div>`;
-  $('useBest').onclick=()=>{ state.fast=best.f; state.slow=best.sl; syncSliders(); renderAll(); $('h-bt').scrollIntoView({behavior:'smooth'}); };
+  for(const t of niceTicks(lo,hi)) g+=`<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L-6}" y="${y(t)+4}" text-anchor="end" font-size="11" font-family="var(--mono)" fill="var(--muted)">${fmt(t)}</text>`;
+  [0,Math.floor((n-1)/2),n-1].forEach((i,k)=>{ g+=`<text x="${x(i)}" y="${H-6}" text-anchor="${k===0?'start':k===2?'end':'middle'}" font-size="11" font-family="var(--mono)" fill="var(--muted)">${fmtT(times[i],iv)}</text>`; });
+  for(const l of lines){ let d=''; l.vals.forEach((v,i)=>{ if(v==null) return; d+=(d?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1); }); g+=`<path d="${d}" fill="none" stroke="${l.color}" stroke-width="${l.w||2}" stroke-linejoin="round" stroke-linecap="round"/>`; }
+  for(const m of markers) g+=`<circle cx="${x(m.i)}" cy="${y(m.v)}" r="4" fill="${m.buy?'var(--up)':'var(--down)'}" stroke="var(--surface)" stroke-width="1.5"/>`;
+  const last=lines[0].vals.at(-1); if(last!=null) g+=`<circle cx="${x(n-1)}" cy="${y(last)}" r="4" fill="${lines[0].color}"/>`;
+  el.innerHTML=g;
 }
 
-// ---- live paper bot (state saved per person) ----
-let store = null; // {get(), set(v)}
-function renderLive(){
-  const el = $('live'), bot = state.bot;
-  if(!bot){
-    el.innerHTML = `<p>Bot zaczyna od wirtualnych 100 $ z ustawieniami z kroku 1 (<b style="font-family:var(--mono)">${state.coin} ${state.fast}/${state.slow}</b>). Codziennie na zamknięciu dnia decyduje, czy kupić, sprzedać, czy czekać. Wracaj tu co kilka dni i sprawdzaj wynik.</p>
-      <div class="row"><button class="btn" type="button" id="startBot">Uruchom bota</button></div>
-      <p class="note">${store?.kind==='db' ? 'Stan bota zapisuje się na Twoim koncie, więc zobaczysz go też na innym urządzeniu.' : 'Stan bota zapisuje się w tej przeglądarce.'}</p>`;
-    $('startBot').onclick = startBot; return;
-  }
-  const s = state.data[bot.coin], closes=s.map(r=>r[1]), dates=s.map(r=>r[0]);
-  let start = dates.findIndex(d=>d>=bot.start); if(start<0) start = s.length-1;
-  const r = run(closes, bot.fast, bot.slow, start);
-  const v=r.eq.at(-1), h=r.hold.at(-1), days=s.length-1-start;
-  const rows = r.trades.slice().reverse().map(t=>`<tr><td>${fmtDate(dates[t.i])}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}</td><td>${fmtPx(closes[t.i])}</td></tr>`).join('');
-  el.innerHTML = `
-    <div class="row" style="justify-content:space-between"><span class="eyebrow">${bot.coin} · ${bot.fast}/${bot.slow} · od ${fmtDate(bot.start)}</span><span class="note">${days===0?'Pierwszy dzień':days+' dni'}</span></div>
-    <div class="score">
-      <div><span class="k">Portfel bota</span><span class="v">${fmtUsd(v)}</span><span class="d ${cls(v-CAP)}">${fmtPct((v/CAP-1)*100)}</span></div>
-      <div><span class="k">Gdyby tylko trzymać</span><span class="v">${fmtUsd(h)}</span><span class="d ${cls(h-CAP)}">${fmtPct((h/CAP-1)*100)}</span></div>
-    </div>
-    <p class="verdict">Teraz bot ${r.pos ? 'trzyma <b>'+bot.coin+'</b>, bo krótka średnia jest nad długą.' : 'czeka w <b>dolarach</b>, bo krótka średnia jest pod długą.'}</p>
-    ${rows ? `<div class="tablebox"><table class="ledger"><thead><tr><th>Dzień</th><th>Ruch</th><th>Cena</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="note">Bot nie zrobił jeszcze żadnej transakcji.</p>'}
-    <div class="row" id="resetRow"><button class="btn ghost" type="button" id="resetBot">Zacznij od nowa</button></div>`;
-  $('resetBot').onclick = ()=>{
-    $('resetRow').innerHTML = `<span>Wyzerować bota i jego historię?</span><button class="btn" type="button" id="yes">Tak, wyzeruj</button><button class="btn ghost" type="button" id="no">Anuluj</button>`;
-    $('yes').onclick = async()=>{ state.bot=null; await saveBot(); renderLive(); };
-    $('no').onclick = renderLive;
-  };
+// ---------------- tabs ----------------
+function showTab(t){
+  const bot = t!=='gielda';
+  $('view-bot').hidden=!bot; $('view-ex').hidden=bot;
+  $('tab-bot').setAttribute('aria-selected',bot); $('tab-ex').setAttribute('aria-selected',!bot);
+  try{ history.replaceState(null,'',bot?'#bot':'#gielda'); }catch(e){}
+  if(bot) B.load(); else X.load();
 }
-async function startBot(){
-  const s = series();
-  state.bot = {coin:state.coin, fast:state.fast, slow:state.slow, start:s[s.length-1][0]};
-  await saveBot(); renderLive();
-}
-async function saveBot(){ try{ await store?.set(state.bot); }catch(e){ console.warn(e); } }
+$('tab-bot').onclick=()=>showTab('bot'); $('tab-ex').onclick=()=>showTab('gielda');
 
-function syncSliders(){ $('fast').value=state.fast; $('slow').value=state.slow; $('fastOut').textContent=state.fast; $('slowOut').textContent=state.slow; }
-function onSlide(){
-  let f=+$('fast').value, s=+$('slow').value;
-  if(f>=s){ if(this.id==='fast') s=Math.min(150,f+1); else f=Math.max(3,s-1); }
-  state.fast=f; state.slow=s; syncSliders(); renderBacktest(); renderFair(); if(!state.bot) renderLive();
+function segButtons(el, items, current, onPick){
+  el.innerHTML = items.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${v===current}">${l}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>onPick(b.dataset.v));
 }
-$('fast').oninput=onSlide; $('slow').oninput=onSlide;
-function renderAll(){ renderCoins(); renderStatus(); renderBacktest(); renderFair(); renderLive(); }
+function chipButtons(el, list, current, onPick){
+  el.innerHTML = list.length ? list.map(a=>`<button class="chip" type="button" data-s="${a.sym}" aria-pressed="${a.sym===current}">${label(a.sym)} <small>${a.name}</small></button>`).join('')
+    : `<span class="note">${stocksErr || 'Ładuję listę spółek…'}</span>`;
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>onPick(b.dataset.s));
+}
 
-// ---- live prices via the Stocklake connector ----
-let mcp = null;
-const ERR = {
-  server_not_connected:'Dodaj Stocklake w ustawieniach claude.ai → Konektory, żeby mieć świeże ceny.',
-  needs_reauth:'Połącz ponownie Stocklake w ustawieniach claude.ai → Konektory.',
-  selection_required:'Wybierz, którego połączenia Stocklake użyć, w oknie claude.ai.',
-  not_in_manifest:'Świeże ceny są wyłączone dla tej strony. Pokazuję zapisane dane.',
-  blocked_by_policy:'Twoja organizacja blokuje Stocklake. Pokazuję zapisane dane.',
-  server_unavailable:'Stocklake chwilowo nie odpowiada. Pokazuję zapisane dane.',
-};
-async function fetchBinance(coin){
-  for(const host of ['https://data-api.binance.vision','https://api.binance.com']){
+// =============== BOT ===============
+const B = {
+  market:'CR', sym:'BTC', iv:'15m', fast:10, slow:30, data:null, err:null, bot:store('bot100v2'), liveData:null, liveErr:null, loading:false,
+  async load(){
+    this.renderPicker();
+    if(!this.sym){ this.data=null; this.err=stocksErr||'Brak spółek do wyboru.'; this.renderAll(); return; }
+    this.loading=true; this.err=null; this.renderStatus();
+    const key=this.sym+this.iv;
+    try{ const d=await candles(this.sym,this.iv); if(key!==this.sym+this.iv) return; this.data=d; }
+    catch(e){ this.data=null; this.err = CRYPTO[this.sym] ? 'Binance nie odpowiada. Spróbuj za chwilę.' : (stocksErr || 'Brak danych dla tego interwału.'); }
+    this.loading=false; this.renderPicker(); this.renderAll();
+    this.loadLive();
+  },
+  renderPicker(){
+    segButtons($('b-market'), Object.entries(MARKETS), this.market, async m=>{ this.market=m; if(m!=='CR') await loadStocks(); const l=assetList(m); this.sym=l[0]?.sym||null; if(!intervalsFor(m).includes(this.iv)) this.iv='1h'; this.load(); });
+    chipButtons($('b-assets'), assetList(this.market), this.sym, s=>{ this.sym=s; this.load(); });
+    segButtons($('b-iv'), intervalsFor(this.market).map(v=>[v,IVLBL[v]]), this.iv, v=>{ this.iv=v; this.load(); });
+  },
+  renderStatus(){
+    const d=this.data;
+    $('b-price').textContent = d?.length && this.sym ? fmtPx(d.at(-1)[1], assetInfo(this.sym).cur) : '–';
+    $('b-dot').className='dot'+(d&&!this.err?' live':'');
+    $('b-status').textContent = this.loading ? 'Pobieram dane…' : this.err ? this.err
+      : `${d.length} świec po ${IVLBL[this.iv]}, ostatnia ${fmtT(d.at(-1)[0], this.iv)}`;
+  },
+  renderAll(){ this.renderStatus(); this.renderBacktest(); this.renderFair(); this.renderLive(); },
+  renderBacktest(){
+    const d=this.data;
+    if(!d || d.length < this.slow+10){ ['botV','holdV'].forEach(i=>$(i).textContent='–'); ['botD','holdD'].forEach(i=>$(i).textContent=''); $('facts').innerHTML=d?'<span>Za mało świec dla tak długiej średniej.</span>':''; $('eqChart').innerHTML=''; $('pxChart').innerHTML=''; return; }
+    const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
+    const start=Math.min(this.slow, closes.length-2);
+    const r=run(closes,this.fast,this.slow,start), b=r.eq.at(-1), h=r.hold.at(-1);
+    $('botV').textContent=nf(b)+' $'; $('botD').textContent=fmtPct((b/CAP-1)*100); $('botD').className='d '+cls(b-CAP);
+    $('holdV').textContent=nf(h)+' $'; $('holdD').textContent=fmtPct((h/CAP-1)*100); $('holdD').className='d '+cls(h-CAP);
+    const span = (times.at(-1)-times[start])/864e5;
+    $('facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span><span>Największy spadek: <b>${nf(r.dd,1)}%</b></span>`;
+    const t=times.slice(start), cur=assetInfo(this.sym).cur;
+    drawChart($('eqChart'),[{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}],t,this.iv,[],v=>nf(v,0)+' $');
+    drawChart($('pxChart'),[{vals:closes.slice(start),color:'var(--ink)',w:1.5},{vals:r.F.slice(start),color:'var(--accent)',w:1.5},{vals:r.S.slice(start),color:'var(--hold)',w:1.5}],t,this.iv,
+      r.trades.slice(-60).map(x=>({i:x.i-start,v:closes[x.i],buy:x.buy})));
+  },
+  renderFair(){
+    const d=this.data, el=$('fair');
+    if(!d || d.length<200){ el.innerHTML='<p class="note">Za mało danych do testu. Wybierz krótszy interwał albo inny instrument.</p>'; return; }
+    const closes=d.map(r=>r[1]), start=30, split=start+Math.floor((closes.length-start)*2/3);
+    let best=null;
+    for(const f of [5,10,15,20]) for(const s of [20,30,50,80]) if(f<s){ const r=run(closes,f,s,start,split); const v=r.eq.at(-1); if(!best||v>best.v) best={f,s,v,h:r.hold.at(-1)}; }
+    const t=run(closes,best.f,best.s,split), tb=t.eq.at(-1), th=t.hold.at(-1);
+    const a=best.v>best.h, b=tb>th;
+    const msg = a&&b ? 'Strategia wygrała z trzymaniem także na nowych danych. Dobry znak, ale jeden okres to wciąż mało, żeby mówić o przewadze.'
+      : a ? 'Na treningu ustawienia wyglądały świetnie, a na nowych danych przegrały z trzymaniem. To klasyczne przeuczenie.'
+      : b ? 'Na treningu przegrała, a na nowych danych akurat wygrała. To wygląda bardziej na przypadek niż na przewagę.'
+      : 'Strategia przegrała z trzymaniem i na treningu, i na nowych danych. W tym okresie prościej było po prostu kupić i czekać.';
+    el.innerHTML=`<div class="score"><div><span class="k">Trening · ${best.f}/${best.s}</span><span class="v">${nf(best.v)} $</span><span class="d">trzymanie: ${nf(best.h)} $</span></div>
+      <div><span class="k">Nowe dane</span><span class="v ${cls(tb-CAP)}">${nf(tb)} $</span><span class="d">trzymanie: ${nf(th)} $</span></div></div>
+      <p class="verdict">${msg}</p><div class="row"><button class="btn ghost" type="button" id="useBest">Ustaw ${best.f}/${best.s} w kroku 1</button></div>`;
+    $('useBest').onclick=()=>{ this.fast=best.f; this.slow=best.s; syncSliders(); this.renderBacktest(); $('h-bt').scrollIntoView({behavior:'smooth'}); };
+  },
+  async loadLive(){
+    const bot=this.bot; if(!bot) return;
     try{
-      const r = await fetch(`${host}/api/v3/klines?symbol=${coin}USDT&interval=1d&limit=400`);
-      if(!r.ok) continue;
-      const k = await r.json();
-      const now = Date.now();
-      state.lastPrice[coin] = +k[k.length-1][4];
-      return k.filter(x=>x[6] < now).map(x=>[new Date(x[0]).toISOString().slice(0,10), +x[4]]);
-    }catch(e){}
-  }
-  throw {code:'binance'};
-}
-async function loadLive(force=false, coin=state.coin){
-  if(!mcp){
-    if(state.live[coin]==='ok' && !force) return;
-    state.live[coin]='loading'; renderStatus();
-    try{ const d = await fetchBinance(coin); if(d.length<60) throw {}; state.data[coin]=d; state.live[coin]='ok'; }
-    catch(e){ state.live[coin]='Binance nie odpowiada. Pokazuję zapisane dane.'; }
-    if(state.coin===coin) renderAll(); else if(state.bot?.coin===coin) renderLive();
-    return;
-  }
-  if(state.live[coin]==='ok' && !force) return;
-  state.live[coin]='loading'; renderStatus();
-  try{
-    const res = await mcp.callTool('Stocklake','get_stock_history',{symbol:coin+'-USD', days:365}, {cache:{staleTime:600000, refresh:force}});
-    const p = res.payload; const hist = p && Array.isArray(p.history) ? p.history : null;
-    if(!hist || hist.length<60) throw {code:'tool_error', message:'Za mało danych'};
-    state.data[coin] = hist.filter(x=>x && x.date && x.close>0).map(x=>[x.date, x.close]);
-    state.live[coin]='ok';
-  }catch(e){
-    state.live[coin] = ERR[e?.code] || 'Nie udało się pobrać świeżych cen. Pokazuję zapisane dane.';
-  }
-  if(state.coin===coin) renderAll(); else if(state.bot?.coin===coin) renderLive();
-}
-$('refresh').onclick = ()=>loadLive(true);
-
-// ---- boot ----
-syncSliders(); renderAll();
-(async()=>{
-  // storage: account db if available, else this browser
-  try{
-    const [db, user] = await Promise.all([window.claude?.use?.('db'), window.claude?.use?.('user')]);
-    const uid = user ? await user.id() : null;
-    if(db && uid){
-      const ref = db.doc(`data/users/${uid}/bot`);
-      store = {kind:'db', get: async()=>{ const s=await ref.get(); return s.exists ? (s.data().bot||null) : null; }, set: v=>ref.set({bot:v})};
+      const since = bot.start - (bot.slow+2)*IVMS[bot.iv];
+      this.liveData = await candles(bot.sym, bot.iv, since); this.liveErr=null;
+    }catch(e){ this.liveErr='Nie udało się pobrać danych bota. Spróbuję ponownie za minutę.'; }
+    this.renderLive();
+  },
+  renderLive(){
+    const el=$('live'), bot=this.bot;
+    if(!bot){
+      const info=this.sym?assetInfo(this.sym):{market:'CR'}, closedNote = info.market!=='CR' ? ' Na akcjach bot handluje tylko w godzinach sesji.' : '';
+      el.innerHTML=`<p>Bot startuje z wirtualnymi 100 $ i ustawieniami z kroku 1: <b style="font-family:var(--mono)">${this.sym?label(this.sym):'–'} · co ${IVLBL[this.iv]} · ${this.fast}/${this.slow}</b>. Po zamknięciu każdej świecy decyduje: kup, sprzedaj albo czekaj.${closedNote}</p>
+        <p class="note">Nie musisz trzymać strony otwartej. Po powrocie bot przelicza wszystkie decyzje od startu. Stan zapisuje się w tej przeglądarce.</p>
+        <div class="row"><button class="btn" type="button" id="startBot" ${this.data&&this.sym?'':'disabled'}>Uruchom bota</button></div>`;
+      $('startBot').onclick=()=>{ this.bot={sym:this.sym,iv:this.iv,fast:this.fast,slow:this.slow,start:Date.now()}; store('bot100v2',this.bot); this.liveData=null; this.renderLive(); this.loadLive(); };
+      return;
     }
-  }catch(e){ store=null; }
-  if(!store){
-    store = {kind:'local', get: async()=>{ try{ return JSON.parse(localStorage.getItem('bot100')||'null'); }catch(e){ return null; } }, set: async v=>{ try{ localStorage.setItem('bot100', JSON.stringify(v)); }catch(e){} }};
-  }
-  try{ state.bot = await store.get(); }catch(e){ state.bot=null; }
-  renderLive();
-  try{ mcp = await window.claude?.use?.('mcp'); }catch(e){ mcp=null; }
-  if(mcp){
-    await loadLive();
-    if(state.bot && state.bot.coin!==state.coin) await loadLive(false, state.bot.coin);
-  } else {
-    await loadLive();
-    if(state.bot && state.bot.coin!==state.coin) await loadLive(false, state.bot.coin);
-  }
-})();
-</script>
+    const info=assetInfo(bot.sym);
+    const head=`<div class="row between"><span class="eyebrow">${label(bot.sym)} · co ${IVLBL[bot.iv]} · ${bot.fast}/${bot.slow}</span><span class="note">start ${fmtT(bot.start,'1h')}</span></div>`;
+    const d=this.liveData;
+    let body;
+    if(!d){ body = `<p class="note">${this.liveErr || 'Pobieram dane bota…'}</p>`; }
+    else {
+      const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
+      // first candle that closed after the bot started
+      let s=times.findIndex(t=>t+IVMS[bot.iv] >= bot.start);
+      if(s<0) s=closes.length-1;
+      const r = closes.length ? run(closes,bot.fast,bot.slow,s) : null;
+      if(!r){ body='<p class="note">Czekam na pierwszą zamkniętą świecę.</p>'; }
+      else {
+        const v=r.eq.at(-1), h=r.hold.at(-1);
+        const next = times.at(-1) + 2*IVMS[bot.iv];
+        const mins = Math.max(0, Math.round((next-Date.now())/60000));
+        const nextTxt = info.market!=='CR' && !marketOpen(info.market) ? 'Sesja zamknięta, bot czeka na otwarcie.'
+          : `Następna decyzja około ${fmtT(next,'1h').slice(-5)}${mins<120?` (za ${mins} min)`:''}.`;
+        const rows=r.trades.slice(-30).reverse().map(t=>`<tr><td>${fmtT(times[t.i],bot.iv==='1d'?'1d':'1h')}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}</td><td>${fmtPx(closes[t.i],info.cur)}</td></tr>`).join('');
+        body=`<div class="score"><div><span class="k">Portfel bota</span><span class="v">${nf(v)} $</span><span class="d ${cls(v-CAP)}">${fmtPct((v/CAP-1)*100)}</span></div>
+          <div><span class="k">Gdyby tylko trzymać</span><span class="v">${nf(h)} $</span><span class="d ${cls(h-CAP)}">${fmtPct((h/CAP-1)*100)}</span></div></div>
+          <div class="facts"><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span></div>
+          <p class="verdict">Bot ${r.pos?`trzyma <b>${label(bot.sym)}</b>.`:'czeka w <b>dolarach</b>.'} ${nextTxt}</p>
+          ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Cena</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Bot nie zrobił jeszcze żadnej transakcji.</p>'}`;
+      }
+    }
+    el.innerHTML = head + body + `<div class="row" id="resetRow"><button class="btn ghost" type="button" id="resetBot">Zatrzymaj i zacznij od nowa</button></div>`;
+    $('resetBot').onclick=()=>{
+      $('resetRow').innerHTML=`<span>Wyzerować bota i jego historię?</span><button class="btn" type="button" id="yes">Tak</button><button class="btn ghost" type="button" id="no">Anuluj</button>`;
+      $('yes').onclick=()=>{ this.bot=null; store('bot100v2',null); this.renderLive(); };
+      $('no').onclick=()=>this.renderLive();
+    };
+  },
+};
+function syncSliders(){ $('fast').value=B.fast; $('slow').value=B.slow; $('fastOut').textContent=B.fast; $('slowOut').textContent=B.slow; }
+function onSlide(){ let f=+$('fast').value, s=+$('slow').value; if(f>=s){ if(this.id==='fast') s=Math.min(150,f+1); else f=Math.max(3,s-1); } B.fast=f; B.slow=s; syncSliders(); B.renderBacktest(); B.renderFair(); if(!B.bot) B.renderLive(); }
+$('fast').oninput=onSlide; $('slow').oninput=onSlide;
 
+// =============== GIEŁDA ===============
+const X = {
+  market:'US', sym:null, side:'buy', price:null, prevClose:null, chart:null, err:null, updated:null,
+  wallet: store('gielda100') || {usd:100, pos:{}, hist:[]},
+  prices:{}, // sym -> last price in its own currency
+  fx(){ return stocks?.fx?.USDPLN || 4; },
+  toUsd(sym, px){ return assetInfo(sym).cur==='PLN' ? px/this.fx() : px; },
+  async load(){
+    if(this.market!=='CR') await loadStocks();
+    const list=assetList(this.market);
+    if(!this.sym || !list.find(a=>a.sym===this.sym)) this.sym=list[0]?.sym||null;
+    this.renderPicker(); this.renderOrder(); this.renderWallet(); this.renderHist();
+    await this.refresh(true);
+  },
+  renderPicker(){
+    segButtons($('x-market'), Object.entries(MARKETS), this.market, async m=>{ this.market=m; this.sym=null; this.price=null; this.load(); });
+    chipButtons($('x-assets'), assetList(this.market), this.sym, s=>{ this.sym=s; this.price=null; this.renderPicker(); this.refresh(true); });
+  },
+  async refresh(withChart=false){
+    const sym=this.sym; if(!sym){ this.renderQuote(); return; }
+    try{
+      if(CRYPTO[sym]){
+        const t = await binance(`/api/v3/ticker/24hr?symbol=${sym}USDT`);
+        if(sym!==this.sym) return;
+        this.price=+t.lastPrice; this.prevClose=+t.prevClosePrice || +t.openPrice; this.updated=Date.now();
+        if(withChart || !this.chart){ const k=await binance(`/api/v3/klines?symbol=${sym}USDT&interval=15m&limit=96`); this.chart=k.map(x=>[x[0],+x[4]]); }
+        else if(this.chart?.length){ this.chart[this.chart.length-1]=[this.chart.at(-1)[0], this.price]; }
+      } else {
+        await loadStocks(!withChart);
+        const a=stocks?.assets?.[sym]; if(!a) throw new Error('nostock');
+        const m15=a.iv['15m']||a.iv['1h']||a.iv['1d'], d1=a.iv['1d']||[];
+        const last=m15.at(-1);
+        this.price=last[1]; this.updated=last[0]*1000;
+        // previous session close = last daily bar before today's
+        const today=new Date(last[0]*1000).toDateString();
+        const prev=[...d1].reverse().find(([t])=>new Date(t*1000).toDateString()!==today);
+        this.prevClose=prev?prev[1]:null;
+        const lastDay=new Date(last[0]*1000).toDateString();
+        let pts=m15.slice(-60); this.chart=pts.map(([t,c])=>[t*1000,c]);
+      }
+      this.prices[sym]=this.price; this.err=null;
+    }catch(e){ this.err = CRYPTO[sym] ? 'Binance nie odpowiada. Spróbuję ponownie za chwilę.' : (stocksErr || 'Brak danych dla tej spółki.'); }
+    this.renderQuote(); this.renderOrder(); this.renderWallet();
+  },
+  renderQuote(){
+    const sym=this.sym, info=sym?assetInfo(sym):null;
+    $('x-name').textContent = info ? `${label(sym)} · ${info.name}` : '–';
+    $('x-price').textContent = this.price!=null ? fmtPx(this.price, info.cur) : '–';
+    if(this.price!=null && this.prevClose){ const ch=(this.price/this.prevClose-1)*100; $('x-change').textContent=`${fmtPct(ch)} od ostatniego zamknięcia`; $('x-change').className='d '+cls(ch); }
+    else { $('x-change').textContent=''; }
+    const open = info ? marketOpen(info.market) : false;
+    const pill=$('x-session');
+    pill.textContent = !info ? '–' : info.market==='CR' ? 'Handel 24/7' : open ? 'Sesja otwarta' : 'Sesja zamknięta';
+    pill.className = 'pill ' + (info && (open) ? 'open' : 'closed');
+    if(this.chart?.length) drawChart($('x-chart'), [{vals:this.chart.map(r=>r[1]), color:'var(--accent)', w:2}], this.chart.map(r=>r[0]), '1h', [], shortNum, 200);
+    else $('x-chart').innerHTML='';
+    $('x-dot').className='dot'+(this.err?' closed':' live');
+    $('x-status').textContent = this.err ? this.err
+      : !info ? (stocksErr || 'Wybierz instrument.')
+      : info.market==='CR' ? `Cena na żywo, odświeżana co 5 s`
+      : `Cena opóźniona, stan z ${fmtT(this.updated,'1h')}${info.cur==='PLN' ? ` · kurs USD/PLN ${nf(this.fx(),3)}` : ''}`;
+  },
+  setSide(s){ this.side=s; $('x-amount').value=''; this.renderOrder(); },
+  renderOrder(){
+    segButtons($('x-side'), [['buy','Kup'],['sell','Sprzedaj']], this.side, s=>this.setSide(s));
+    const sym=this.sym, info=sym?assetInfo(sym):null, buy=this.side==='buy';
+    $('x-amount-label').textContent = buy ? 'Kwota w dolarach' : `Liczba ${sym?label(sym):''}`;
+    $('x-unit').textContent = buy ? '$' : (sym?label(sym):'');
+    const btn=$('x-submit'); btn.className='btn wide '+(buy?'buy':'sell');
+    const amt=parseFloat(($('x-amount').value||'').replace(',','.'))||0;
+    const open = info && marketOpen(info.market);
+    let preview=' ', ok=false;
+    if(!info || this.price==null) preview='Czekam na cenę…';
+    else if(!open) preview=`Sesja ${info.market==='US'?'w USA (15:30–22:00)':'na GPW (9:00–17:00)'} jest zamknięta. Zlecenie złożysz, gdy się otworzy.`;
+    else {
+      const pxUsd=this.toUsd(sym,this.price);
+      if(buy){
+        const fee=amt*FEE, qty=(amt-fee)/pxUsd;
+        preview = amt>0 ? `Dostaniesz około ${nf(qty, qty<1?6:3)} ${label(sym)}, prowizja ${nf(fee)} $` : `Masz ${nf(this.wallet.usd)} $ gotówki`;
+        ok = amt>0 && amt<=this.wallet.usd+1e-9;
+        if(amt>this.wallet.usd+1e-9) preview='Masz za mało gotówki.';
+      } else {
+        const have=this.wallet.pos[sym]||0, gross=amt*pxUsd, fee=gross*FEE;
+        preview = amt>0 ? `Dostaniesz około ${nf(gross-fee)} $, prowizja ${nf(fee)} $` : (have>0 ? `Masz ${nf(have, have<1?6:3)} ${label(sym)}` : `Nie masz ${label(sym)}.`);
+        ok = amt>0 && amt<=have+1e-12;
+        if(amt>have+1e-12) preview=`Masz tylko ${nf(have, have<1?6:3)} ${label(sym)}.`;
+      }
+    }
+    $('x-preview').textContent=preview;
+    btn.textContent = buy ? `Kup ${sym?label(sym):''}` : `Sprzedaj ${sym?label(sym):''}`;
+    btn.disabled=!ok;
+  },
+  quick(p){
+    const sym=this.sym; if(!sym) return;
+    let v = this.side==='buy' ? this.wallet.usd*p/100 : (this.wallet.pos[sym]||0)*p/100;
+    v = this.side==='buy' ? Math.floor(v*100)/100 : (p===100 ? v : +v.toPrecision(8));
+    $('x-amount').value = v>0 ? String(v) : ''; this.renderOrder();
+  },
+  submit(){
+    const sym=this.sym, amt=parseFloat(($('x-amount').value||'').replace(',','.'))||0;
+    if(!sym || this.price==null || amt<=0) return;
+    const pxUsd=this.toUsd(sym,this.price), w=this.wallet;
+    let entry;
+    if(this.side==='buy'){
+      if(amt>w.usd+1e-9) return;
+      const fee=amt*FEE, qty=(amt-fee)/pxUsd;
+      w.usd=Math.max(0,w.usd-amt); w.pos[sym]=(w.pos[sym]||0)+qty;
+      w.cost=w.cost||{}; w.cost[sym]=(w.cost[sym]||0)+amt;
+      entry={t:Date.now(),sym,side:'buy',qty,px:this.price,usd:amt};
+    } else {
+      const have=w.pos[sym]||0; if(amt>have+1e-12) return;
+      const q=Math.min(amt,have), gross=q*pxUsd, fee=gross*FEE;
+      w.usd+=gross-fee; w.cost=w.cost||{}; if(have>0) w.cost[sym]=(w.cost[sym]||0)*(1-q/have);
+      w.pos[sym]=have-q; if(w.pos[sym]<1e-12){ delete w.pos[sym]; delete w.cost[sym]; }
+      entry={t:Date.now(),sym,side:'sell',qty:q,px:this.price,usd:gross-fee};
+    }
+    w.hist.unshift(entry); w.hist=w.hist.slice(0,100);
+    store('gielda100',w);
+    $('x-amount').value='';
+    const m=$('x-msg'); m.hidden=false;
+    m.textContent = entry.side==='buy' ? `Kupiono ${nf(entry.qty, entry.qty<1?6:3)} ${label(sym)} za ${nf(entry.usd)} $.` : `Sprzedano ${nf(entry.qty, entry.qty<1?6:3)} ${label(sym)}, na konto wpłynęło ${nf(entry.usd)} $.`;
+    clearTimeout(this._t); this._t=setTimeout(()=>{ m.hidden=true; },4000);
+    this.renderOrder(); this.renderWallet(); this.renderHist();
+  },
+  async refreshHeld(){
+    const held=Object.keys(this.wallet.pos);
+    const cr=held.filter(s=>CRYPTO[s]&&s!==this.sym);
+    if(cr.length){ try{ const r=await binance(`/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(cr.map(s=>s+'USDT')))}`); r.forEach(x=>{ this.prices[x.symbol.replace('USDT','')]=+x.price; }); }catch(e){} }
+    if(held.some(s=>!CRYPTO[s])){ await loadStocks(); for(const s of held) if(!CRYPTO[s]){ const a=stocks?.assets?.[s]; const ser=a?.iv?.['15m']||a?.iv?.['1h']||a?.iv?.['1d']; if(ser) this.prices[s]=ser.at(-1)[1]; } }
+    this.renderWallet();
+  },
+  renderWallet(){
+    const w=this.wallet, el=$('x-wallet');
+    let total=w.usd, rows='';
+    for(const [s,q] of Object.entries(w.pos)){
+      const px=this.prices[s]; const usd = px!=null ? this.toUsd(s,px)*q : null;
+      if(usd!=null) total+=usd;
+      const cost=w.cost?.[s]; const pl = usd!=null && cost ? usd-cost : null;
+      rows+=`<tr><td>${label(s)}</td><td>${nf(q, q<1?6:3)}</td><td>${usd!=null?nf(usd)+' $':'…'}</td><td class="${pl==null?'':cls(pl)}">${pl==null?'–':(pl>=0?'+':'')+nf(pl)+' $'}</td></tr>`;
+    }
+    const allPriced = Object.keys(w.pos).every(s=>this.prices[s]!=null);
+    el.innerHTML = `<div class="score"><div><span class="k">Wartość portfela</span><span class="v">${allPriced?nf(total)+' $':'…'}</span>${allPriced?`<span class="d ${cls(total-CAP)}">${fmtPct((total/CAP-1)*100)}</span>`:''}</div>
+      <div><span class="k">Gotówka</span><span class="v">${nf(w.usd)} $</span></div></div>
+      ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Walor</th><th>Ilość</th><th>Wartość</th><th>Zysk</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Nie masz jeszcze żadnych walorów. Wybierz instrument i kup za część gotówki.</p>'}
+      <div class="row" id="wReset"><button class="btn ghost" type="button" id="wResetBtn">Zacznij od nowa ze 100 $</button></div>`;
+    $('wResetBtn').onclick=()=>{
+      $('wReset').innerHTML=`<span>Wyzerować portfel i historię?</span><button class="btn" type="button" id="wy">Tak</button><button class="btn ghost" type="button" id="wn">Anuluj</button>`;
+      $('wy').onclick=()=>{ this.wallet={usd:100,pos:{},hist:[]}; store('gielda100',this.wallet); this.renderWallet(); this.renderHist(); this.renderOrder(); };
+      $('wn').onclick=()=>this.renderWallet();
+    };
+  },
+  renderHist(){
+    const h=this.wallet.hist;
+    $('x-hist').innerHTML = h.length ? `<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Ilość</th><th>Cena</th><th>Kwota</th></tr></thead><tbody>${
+      h.slice(0,30).map(e=>`<tr><td>${fmtT(e.t,'1h')}</td><td class="${e.side==='buy'?'up':'down'}">${e.side==='buy'?'Kupno':'Sprzedaż'} ${label(e.sym)}</td><td>${nf(e.qty,e.qty<1?6:3)}</td><td>${fmtPx(e.px,assetInfo(e.sym).cur)}</td><td>${nf(e.usd)} $</td></tr>`).join('')
+    }</tbody></table></div>` : '<p class="note">Tu pojawią się Twoje zlecenia.</p>';
+  },
+};
+$('x-amount').oninput=()=>X.renderOrder();
+$('x-quick').querySelectorAll('button').forEach(b=>b.onclick=()=>X.quick(+b.dataset.p));
+$('x-submit').onclick=()=>X.submit();
+
+// ---------------- timers ----------------
+setInterval(()=>{ if(document.hidden) return; if(!$('view-ex').hidden && X.sym && CRYPTO[X.sym]) X.refresh(false); }, 5000);
+setInterval(()=>{ if(document.hidden) return; if(!$('view-ex').hidden){ if(X.sym && !CRYPTO[X.sym]) X.refresh(false); X.refreshHeld(); } else { B.loadLive(); } }, 60000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ if(!$('view-ex').hidden) X.refresh(true); else B.loadLive(); } });
+
+// ---------------- boot ----------------
+syncSliders();
+loadStocks().then(()=>{ if(!$('view-ex').hidden){ X.renderPicker(); } else B.renderPicker(); X.refreshHeld(); });
+showTab(location.hash==='#gielda' ? 'gielda' : 'bot');
+</script>
 </body>
 </html>

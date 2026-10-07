@@ -1,11 +1,14 @@
 # Bot na 100 $
 
-Prosty bot kryptowalutowy (BTC, ETH, SOL) oparty na przecięciu dwóch średnich kroczących. Działa w całości w przeglądarce, na wirtualnych pieniądzach.
+Strona do nauki tradingu na wirtualnych pieniądzach: https://michajster.github.io/Trading_bot/
 
-- **Backtest**: jak strategia poradziłaby sobie w ostatnich 90, 180 lub 365 dniach, w porównaniu z „kup i trzymaj”. Prowizja 0,1% za transakcję.
-- **Test uczciwości**: najlepsze ustawienia szukane na pierwszych 2/3 okresu i sprawdzane na ostatniej 1/3.
-- **Paper trading**: bot startuje z wirtualnymi 100 $ i raz dziennie, na zamknięciu dnia, decyduje: kupić, sprzedać albo czekać. Stan zapisuje się w przeglądarce.
+**Bot** – strategia przecięcia dwóch średnich kroczących na krypto (BTC, ETH, SOL), akcjach z USA i z GPW. Interwał od 5 minut do 1 dnia. Backtest, test uczciwości (trening na 2/3 danych, sprawdzian na 1/3) i bot na żywo z wirtualnymi 100 $.
 
-Ceny: dzienne świece z publicznego API Binance. Gdy Binance nie odpowiada, strona używa wbudowanej kopii danych.
+**Giełda** – ręczny handel za wirtualne 100 $: kupno i sprzedaż akcji USA, GPW i krypto, portfel z zyskiem lub stratą, historia zleceń. Akcje kupisz tylko w godzinach sesji.
 
-To projekt edukacyjny, nie porada inwestycyjna.
+## Skąd są ceny
+
+- Krypto: publiczne API Binance, na żywo w przeglądarce.
+- Akcje: Yahoo Finance. Workflow `.github/workflows/stocks.yml` co ~15 minut w dni robocze uruchamia `scripts/fetch_stocks.py` i zapisuje `stocks.json` na gałęzi `data`. Ceny są więc opóźnione o kilkanaście minut.
+
+Prowizja w symulacji: 0,1% od transakcji. Projekt edukacyjny, nie porada inwestycyjna.
