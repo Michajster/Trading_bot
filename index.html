@@ -100,6 +100,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .ledger tr.noline td{border-bottom:0;padding-bottom:2px}
 .sltp{display:flex;flex-direction:column;gap:10px;padding-top:10px;font-family:var(--body);white-space:normal}
 .sltp-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
+.headline{font-size:.95rem}
+.optbox{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.optrow{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
 .stack{display:flex;flex-direction:column;gap:12px}
 .strats{display:grid;gap:8px}
 .strat{display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
@@ -160,16 +164,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       </div>
 
       <div class="panel">
-        <span class="k">4 · Podgląd na historii</span>
+        <span class="k">4 · Sprawdź na historii</span>
+        <div><div class="note" style="margin-bottom:6px">Okres sprawdzenia</div><div class="seg" id="n-days"></div></div>
+        <p class="headline" id="p-head"></p>
         <div class="score">
           <div><span class="k">Bot</span><span class="v" id="p-bot">–</span><span class="d" id="p-botd"></span></div>
-          <div><span class="k">Kup i trzymaj</span><span class="v" id="p-hold">–</span><span class="d" id="p-holdd"></span></div>
+          <div><span class="k">Gdybyś tylko kupił i trzymał</span><span class="v" id="p-hold">–</span><span class="d" id="p-holdd"></span></div>
         </div>
         <div class="facts" id="p-facts"></div>
         <svg class="chart" id="p-eq" viewBox="0 0 600 200" role="img" aria-label="Wartość bota i strategii kup i trzymaj"></svg>
         <div class="legend"><span><i style="background:var(--accent)"></i>Bot</span><span><i style="background:var(--hold)"></i>Kup i trzymaj</span></div>
         <svg class="chart" id="p-px" viewBox="0 0 600 200" role="img" aria-label="Cena i transakcje bota"></svg>
         <p class="verdict" id="p-verdict"></p>
+        <div class="optbox">
+          <div class="row"><button class="btn ghost" type="button" id="n-opt1">Zaproponuj najlepsze ustawienia</button><button class="btn ghost" type="button" id="n-optall">Porównaj wszystkie strategie</button></div>
+          <div id="n-opt"></div>
+        </div>
         <button class="btn wide" type="button" id="n-start">Uruchom bota</button>
       </div>
     </section>
@@ -478,9 +488,36 @@ function priceChart(el, res, closes, times, start, iv, H=200){
   drawChart(el, lines, times.slice(start,start+res.eq.length), iv, res.trades.slice(-80).map(t=>({i:t.i-start,v:closes[t.i],buy:t.buy})), shortNum, H);
 }
 
+const PERIODS = [7,30,90,365];
+const EXTRA = 160; // extra candles before the period so averages and RSI are ready
+function periodOk(sym, iv, days){
+  if(CRYPTO[sym]) return days*864e5/IVMS[iv] + EXTRA <= 12000;
+  const s=stocks?.assets?.[sym]?.iv?.[iv]; if(!s?.length) return false;
+  return (s.at(-1)[0]-s[0][0])*1000 >= (days-3)*864e5 + EXTRA*IVMS[iv]*0.3;
+}
+const daysTxt = d => d===365 ? 'rok' : d+' dni';
+const parTxt = (type,P) => STRATS[type].params.map(p=>`${p.l.replace(/ \(.*\)/,'')} ${P[p.k]}${p.u}`).join(' · ');
+
+// Try many settings. Split the period: first 2/3 and last 1/3; a good setting should earn in both.
+function optimize(type, closes, start, cap, base){
+  const G={grid:{range:[3,5,8,10,15,20,30],grids:[5,10,15,20,30]}, dca:{tp:[1,1.5,2,3,5],step:[1,2,3,5],so:[2,4,6]},
+    sma:{fast:[5,8,10,15,20],slow:[20,30,50,80,120]}, rsi:{period:[7,14,21],low:[20,25,30,35],high:[65,70,75,80]}}[type];
+  let combos=[{}];
+  for(const [k,vals] of Object.entries(G)) combos=combos.flatMap(c=>vals.map(v=>({...c,[k]:v})));
+  if(type==='sma') combos=combos.filter(c=>c.fast<c.slow);
+  const end=closes.length-1, split=start+Math.floor((end-start)*2/3);
+  const out=combos.map(c=>{
+    const P={...c, sl:base.sl||0, tk:type==='dca'?0:(base.tk||0)};
+    const a=simulate(type,P,closes,start,cap,split), b=simulate(type,P,closes,split,cap,end);
+    const ra=a.eq.at(-1)/cap-1, rb=b.eq.at(-1)/cap-1;
+    return {type,P,ra,rb,ha:a.hold.at(-1)/cap-1,hb:b.hold.at(-1)/cap-1,score:Math.min(ra,rb)};
+  });
+  return out.sort((x,y)=>y.score-x.score);
+}
+
 const B = {
   bots: [], data:{}, err:{}, open:null,
-  n:{market:'CR', sym:'BTC', iv:'15m', type:'grid', P:{}, cap:100, data:null, err:null, loading:false},
+  n:{market:'CR', sym:'BTC', iv:'15m', type:'grid', P:{}, cap:100, days:30, data:null, err:null, loading:false, cache:{}},
   init(){
     let bots=store('bots100v3');
     if(!bots){ bots=[]; const old=store('bot100v2'); if(old) bots.push({id:Date.now(),sym:old.sym,iv:old.iv,type:'sma',P:{fast:old.fast,slow:old.slow},cap:100,start:old.start,stopped:null}); store('bots100v3',bots); }
@@ -580,9 +617,15 @@ const B = {
     if(!intervalsFor(n.market).includes(n.iv)) n.iv='1h';
     this.renderBuilder();
     if(!n.sym){ n.data=null; n.err=stocksErr||'Brak instrumentów.'; this.renderNStatus(); this.preview(); return; }
-    n.loading=true; n.err=null; this.renderNStatus();
-    const key=n.sym+n.iv;
-    try{ const d=await candles(n.sym,n.iv); if(key!==n.sym+n.iv) return; n.data=d; }
+    if(!periodOk(n.sym,n.iv,n.days)){ const ok=PERIODS.filter(d=>periodOk(n.sym,n.iv,d)); n.days = ok.length ? ok.at(-1) : 7; }
+    this.renderBuilder();
+    n.loading=true; n.err=null; $('n-opt').innerHTML=''; this.renderNStatus();
+    const key=n.sym+'|'+n.iv+'|'+n.days;
+    try{
+      let d=n.cache[key];
+      if(!d){ d=await candles(n.sym,n.iv,Date.now()-n.days*864e5-EXTRA*IVMS[n.iv]); n.cache[key]=d; }
+      if(key!==n.sym+'|'+n.iv+'|'+n.days) return; n.data=d;
+    }
     catch(e){ n.data=null; n.err=CRYPTO[n.sym]?'Binance nie odpowiada. Spróbuj za chwilę.':(stocksErr||'Brak danych dla tego interwału.'); }
     n.loading=false; this.renderNStatus(); this.preview();
   },
@@ -590,13 +633,15 @@ const B = {
     const n=this.n, d=n.data;
     $('n-price').textContent = d?.length && n.sym ? fmtPx(d.at(-1)[1], assetInfo(n.sym).cur) : '–';
     $('n-dot').className='dot'+(d&&!n.err?' live':'');
-    $('n-status').textContent = n.loading ? 'Pobieram dane…' : n.err || (d ? `${d.length} świec po ${IVLBL[n.iv]}` : '–');
+    $('n-status').textContent = n.loading ? 'Pobieram dane…' : n.err || (d ? `Cena z ${fmtT(d.at(-1)[0], n.iv==='1d'?'1d':'1h')}` : '–');
   },
   renderBuilder(){
     const n=this.n;
     segButtons($('n-market'), Object.entries(MARKETS), n.market, m=>{ n.market=m; n.sym=null; this.loadN(); });
     chipButtons($('n-assets'), assetList(n.market), n.sym, s=>{ n.sym=s; this.loadN(); });
     segButtons($('n-iv'), intervalsFor(n.market).map(v=>[v,IVLBL[v]]), n.iv, v=>{ n.iv=v; this.loadN(); });
+    $('n-days').innerHTML = PERIODS.map(d=>{ const ok=n.sym && periodOk(n.sym,n.iv,d); return `<button type="button" data-v="${d}" aria-pressed="${d===n.days}" ${ok?'':'disabled'}>${daysTxt(d)}</button>`; }).join('');
+    $('n-days').querySelectorAll('button').forEach(b=>b.onclick=()=>{ n.days=+b.dataset.v; this.loadN(); });
     segButtons($('n-cap'), CAPS.map(c=>[String(c),c+' $']), String(n.cap), v=>{ n.cap=+v; this.renderBuilder(); this.preview(); });
     $('n-strats').innerHTML = Object.entries(STRATS).map(([k,s])=>`<button type="button" class="strat" data-t="${k}" aria-pressed="${k===n.type}"><span class="row between"><b>${s.name}</b><span class="pill">${s.tag}</span></span><span class="note">${s.desc}</span></button>`).join('');
     $('n-strats').querySelectorAll('button').forEach(b=>b.onclick=()=>this.setType(b.dataset.t));
@@ -609,28 +654,56 @@ const B = {
       if(n.type==='sma'){ if(p.k==='fast' && v>=n.P.slow) v=n.P.slow-1; if(p.k==='slow' && v<=n.P.fast) v=n.P.fast+1; e.target.value=v; }
       n.P[p.k]=v; $('npo-'+p.k).textContent=pVal(p,v); this.preview(); }; });
   },
+  previewStart(){
+    const n=this.n, d=n.data; if(!d) return -1;
+    const from=Date.now()-n.days*864e5; let s=d.findIndex(r=>r[0]>=from); if(s<0) s=0;
+    return Math.max(s, warmup(n.type,n.P));
+  },
   preview(){
     const n=this.n, d=n.data, ids=['p-bot','p-hold'];
-    const clear=msg=>{ ids.forEach(i=>$(i).textContent='–'); $('p-botd').textContent=''; $('p-holdd').textContent=''; $('p-facts').innerHTML=''; $('p-eq').innerHTML=''; $('p-px').innerHTML=''; $('p-verdict').textContent=msg||''; $('n-start').disabled=true; };
+    const clear=msg=>{ ids.forEach(i=>$(i).textContent='–'); $('p-botd').textContent=''; $('p-holdd').textContent=''; $('p-head').textContent=''; $('p-facts').innerHTML=''; $('p-eq').innerHTML=''; $('p-px').innerHTML=''; $('p-verdict').textContent=msg||''; $('n-start').disabled=true; };
     if(!d || !n.sym) return clear(n.loading?'':'Wybierz instrument z danymi.');
-    const w=warmup(n.type,n.P); if(d.length<w+20) return clear('Za mało świec dla tych ustawień.');
+    const w=this.previewStart(); if(d.length<w+20) return clear('Za mało świec dla tych ustawień.');
     const closes=d.map(r=>r[1]), times=d.map(r=>r[0]);
     const r=simulate(n.type,n.P,closes,w,n.cap), b=r.eq.at(-1), h=r.hold.at(-1);
-    $('p-bot').textContent=nf(b)+' $'; $('p-botd').textContent=fmtPct((b/n.cap-1)*100); $('p-botd').className='d '+cls(b-n.cap);
-    $('p-hold').textContent=nf(h)+' $'; $('p-holdd').textContent=fmtPct((h/n.cap-1)*100); $('p-holdd').className='d '+cls(h-n.cap);
-    const span=(times.at(-1)-times[w])/864e5;
+    const span=(times.at(-1)-times[w])/864e5, spanTxt = span>=360 ? 'rok' : nf(Math.round(span),0)+' dni';
+    $('p-head').innerHTML=`Gdyby ten bot wystartował <b>${spanTxt} temu</b> (${fmtT(times[w],'1d')}) z ${nf(n.cap,0)} $, dziś miałbyś:`;
+    const money=v=>`${v>=n.cap?'zysk':'strata'} ${nf(Math.abs(v-n.cap))} $ (${fmtPct((v/n.cap-1)*100)})`;
+    $('p-bot').textContent=nf(b)+' $'; $('p-botd').textContent=money(b); $('p-botd').className='d '+cls(b-n.cap);
+    $('p-hold').textContent=nf(h)+' $'; $('p-holdd').textContent=money(h); $('p-holdd').className='d '+cls(h-n.cap);
     let extra='';
     if(n.type==='grid') extra=`<span>Zysk z siatki: <b>${nf(r.info.profit)} $</b></span>`;
     if(n.type==='dca') extra=`<span>Zamknięte transakcje: <b>${r.info.deals}</b></span>`;
     const ex=r.exits.length ? `<span>Zabezpieczenia zadziałały: <b>${r.exits.length}×</b></span>` : '';
-    $('p-facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span>${extra}${ex}`;
+    $('p-facts').innerHTML=`<span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span>${extra}${ex}`;
     drawChart($('p-eq'),[{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}],times.slice(w),n.iv,[],v=>nf(v,0)+' $',200);
     priceChart($('p-px'), r, closes, times, w, n.iv);
     const beat=b>h, gain=b>n.cap;
-    $('p-verdict').innerHTML = (gain&&beat ? 'Na tej historii bot zarobił i pobił zwykłe trzymanie.' : gain ? 'Bot zarobił, ale zwykłe trzymanie dało więcej.' : beat ? 'Bot stracił, ale mniej niż przy zwykłym trzymaniu.' : 'Na tej historii bot stracił więcej niż przy zwykłym trzymaniu.')
-      + (n.type==='grid' ? ' Zakres siatki liczę od ceny z początku podglądu. Prawdziwy bot ustawi go wokół obecnej ceny.' : '')
-      + ' Przeszłość nie gwarantuje przyszłości.';
+    $('p-verdict').innerHTML = (gain&&beat ? 'W tym okresie bot zarobił i pobił zwykłe trzymanie.' : gain ? 'Bot zarobił, ale zwykłe trzymanie dało więcej.' : beat ? 'Bot stracił, ale mniej niż przy zwykłym trzymaniu.' : 'W tym okresie bot stracił więcej niż przy zwykłym trzymaniu.')
+      + ` <b>To wynik z przeszłości, nie prognoza.</b> W kolejnych ${spanTxt==='rok'?'12 miesiącach':spanTxt} może wyjść zupełnie inaczej, bo rynek zachowa się inaczej.`
+      + (n.type==='grid' ? ' Zakres siatki liczę tu od ceny z początku okresu, prawdziwy bot ustawi go wokół obecnej ceny.' : '');
     $('n-start').disabled=false;
+  },
+  runOpt(all){
+    const n=this.n, d=n.data, el=$('n-opt'); if(!d||!n.sym){ el.innerHTML=''; return; }
+    el.innerHTML='<p class="note">Sprawdzam ustawienia…</p>';
+    setTimeout(()=>{
+      const closes=d.map(r=>r[1]);
+      const from=Date.now()-n.days*864e5; let s=d.findIndex(r=>r[0]>=from); if(s<0) s=0;
+      const types = all ? Object.keys(STRATS) : [n.type];
+      let rows=[], tested=0;
+      for(const ty of types){ const st=Math.max(s, all ? 122 : ty==='sma'?122:ty==='rsi'?63:2); const res=optimize(ty,closes,st,n.cap,n.P); tested+=res.length; rows = rows.concat(all ? res.slice(0,1) : res.slice(0,3)); }
+      rows.sort((x,y)=>y.score-x.score);
+      const p=v=>`<b class="${cls(v)}">${fmtPct(v*100)}</b>`;
+      const intro=`<p class="note">Sprawdziłem ${tested} ustawień na danych ${n.days===365?'z ostatniego roku':'z ostatnich '+n.days+' dni'}. Okres dzielę na dwie części: pierwsze 2/3 i ostatnią 1/3. Polecam ustawienia, które zarabiały w obu częściach, bo świetny wynik tylko w jednej to często przypadek.</p>`;
+      const warn = rows[0].score<=0 ? `<p class="msg">Żadne ustawienia nie zarabiały w obu częściach okresu. ${all?'Na tym instrumencie i interwale żadna strategia nie działała stabilnie.':'Ta strategia na tym instrumencie i interwale raczej nie działa. Sprawdź inną.'} Poniżej najmniej złe wyniki.</p>` : '';
+      el.innerHTML = intro + warn + rows.map((o,i)=>`<div class="optrow">
+          <div class="row between"><b>${all?STRATS[o.type].name:'Propozycja '+(i+1)}</b>${o.score>0?'<span class="pill open">zarabiała w obu częściach</span>':''}</div>
+          <span class="note">${parTxt(o.type,o.P)}</span>
+          <div class="facts"><span>1. część: ${p(o.ra)} (trzymanie ${fmtPct(o.ha*100)})</span><span>2. część: ${p(o.rb)} (trzymanie ${fmtPct(o.hb*100)})</span></div>
+          <button class="btn ghost" type="button" data-opt="${i}">Użyj tych ustawień</button></div>`).join('');
+      el.querySelectorAll('[data-opt]').forEach(btn=>btn.onclick=()=>{ const o=rows[+btn.dataset.opt]; if(n.type!==o.type) this.setType(o.type,false); n.P={...n.P,...o.P}; this.renderBuilder(); this.preview(); $('p-head').scrollIntoView({behavior:'smooth',block:'start'}); });
+    }, 30);
   },
   start(){
     const n=this.n, d=n.data; if(!d||!n.sym) return;
@@ -644,6 +717,8 @@ const B = {
 $('b-new').onclick=()=>B.openBuilder();
 $('n-cancel').onclick=()=>B.closeBuilder();
 $('n-start').onclick=()=>B.start();
+$('n-opt1').onclick=()=>B.runOpt(false);
+$('n-optall').onclick=()=>B.runOpt(true);
 B.init();
 
 // =============== GIEŁDA ===============
