@@ -23,7 +23,10 @@
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
 [hidden]{display:none!important}
-.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:26px;min-width:0}
+.wrap > *{min-width:0}
+#view-bot,#view-ex{width:100%;margin:0}
+.tablebox{max-width:100%}
 h1{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1.05;margin:0;letter-spacing:-.01em}
 h2{font-family:var(--display);font-weight:600;font-size:1.25rem;margin:0;text-wrap:balance}
 p{margin:0}
@@ -93,6 +96,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .quick button{font:500 .85rem var(--mono);padding:7px 0;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}
 .msg{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--accent-soft)}
+.subhead{display:flex;flex-direction:column;gap:2px;padding-top:6px;border-top:1px solid var(--line)}
+.ledger tr.noline td{border-bottom:0;padding-bottom:2px}
+.sltp{display:flex;flex-direction:column;gap:10px;padding-top:10px;font-family:var(--body);white-space:normal}
+.sltp-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
 .stack{display:flex;flex-direction:column;gap:12px}
 .strats{display:grid;gap:8px}
 .strat{display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
@@ -372,63 +379,89 @@ const STRATS = {
     params:[{k:'period',l:'Okres RSI (świece)',min:5,max:30,step:1,v:14,u:''},{k:'low',l:'Kupuj poniżej',min:10,max:45,step:1,v:30,u:''},{k:'high',l:'Sprzedawaj powyżej',min:55,max:90,step:1,v:70,u:''}]},
 };
 const CAPS = [50,100,250,1000];
+const PROTECT = [{k:'sl',l:'Stop loss',min:0,max:30,step:1,v:0,u:'%'},{k:'tk',l:'Take profit',min:0,max:50,step:1,v:0,u:'%'}];
+const protectFor = t => t==='dca' ? PROTECT.filter(p=>p.k==='sl') : PROTECT;
+const protectHelp = {sma:'Liczone od ceny zakupu każdej pozycji. Po zadziałaniu bot czeka na nowy sygnał.', rsi:'Liczone od ceny zakupu każdej pozycji.', dca:'Liczone od średniej ceny zakupu. Cel zysku DCA działa jak take profit.', grid:'Liczone od wartości całego bota. Po zadziałaniu bot sprzedaje wszystko i kończy pracę.'};
+const pVal = (p,v) => p.k==='sl'||p.k==='tk' ? (v? (p.k==='sl'?'−':'+')+v+'%' : 'wył.') : v+p.u;
 const warmup = (type,P) => type==='sma' ? P.slow+2 : type==='rsi' ? P.period*3 : 2;
 
 function rsiArr(c,n){ const o=new Array(c.length).fill(null); let g=0,l=0; for(let i=1;i<c.length;i++){ const d=c[i]-c[i-1], up=Math.max(d,0), dn=Math.max(-d,0); if(i<=n){ g+=up; l+=dn; if(i===n){ g/=n; l/=n; o[i]=l===0?100:100-100/(1+g/l); } } else { g=(g*(n-1)+up)/n; l=(l*(n-1)+dn)/n; o[i]=l===0?100:100-100/(1+g/l); } } return o; }
 function gridLevels(P, p0){ const lo=P.lo ?? p0*(1-P.range/100), hi=P.hi ?? p0*(1+P.range/100); const st=(hi-lo)/P.grids; return Array.from({length:P.grids+1},(_,k)=>lo+k*st); }
 
 // One engine for every bot type. Returns equity per candle from `start` to `end`.
+// Protection: P.sl / P.tk in % (0 = off). Trend/RSI: per position from entry price. DCA: stop loss from average cost.
+// Grid: on the whole bot's value; when hit, the bot sells everything and stops.
 function simulate(type, P, closes, start, cap, end=closes.length-1){
-  const p0=closes[start], res={eq:[],hold:[],trades:[],fees:0,lines:[],levels:null,info:{}};
-  const mark=(i,buy)=>{ const l=res.trades.at(-1); if(!(l && l.i===i && l.buy===buy)) res.trades.push({i,buy}); };
+  const p0=closes[start], res={eq:[],hold:[],trades:[],fees:0,lines:[],levels:null,info:{},exits:[]};
+  const sl=(P.sl||0)/100, tk=(P.tk||0)/100;
+  const mark=(i,buy,why)=>{ const l=res.trades.at(-1); if(!(l && l.i===i && l.buy===buy)) res.trades.push({i,buy,why}); else if(why) l.why=why; };
   if(type==='sma' || type==='rsi'){
-    let cash=cap, qty=0, F, S, R;
+    let cash=cap, qty=0, entry=0, blocked=false, F, S, R;
     if(type==='sma'){ F=sma(closes,P.fast); S=sma(closes,P.slow); res.lines=[{vals:F,color:'var(--accent)'},{vals:S,color:'var(--hold)'}]; }
     else R=rsiArr(closes,P.period);
-    const buy=i=>{ const fee=cash*FEE; qty=(cash-fee)/closes[i]; res.fees+=fee; cash=0; mark(i,true); };
-    const sell=i=>{ const g=qty*closes[i], fee=g*FEE; cash+=g-fee; res.fees+=fee; qty=0; mark(i,false); };
+    const buy=i=>{ const fee=cash*FEE; qty=(cash-fee)/closes[i]; res.fees+=fee; cash=0; entry=closes[i]; mark(i,true); };
+    const sell=(i,why)=>{ const g=qty*closes[i], fee=g*FEE; cash+=g-fee; res.fees+=fee; qty=0; mark(i,false,why); if(why) res.exits.push({i,why}); };
     for(let i=start;i<=end;i++){
-      if(type==='sma'){ const want=F[i]!=null && S[i]!=null && F[i]>S[i]; if(want && !qty) buy(i); else if(!want && qty) sell(i); }
+      const p=closes[i];
+      if(qty && sl && p<=entry*(1-sl)){ sell(i,'sl'); blocked=true; }
+      else if(qty && tk && p>=entry*(1+tk)){ sell(i,'tp'); blocked=true; }
+      else if(type==='sma'){ const want=F[i]!=null && S[i]!=null && F[i]>S[i]; if(!want) blocked=false; if(want && !qty && !blocked) buy(i); else if(!want && qty) sell(i); }
       else { const r=R[i]; if(r!=null){ if(!qty && r<P.low) buy(i); else if(qty && r>P.high) sell(i); } }
-      res.eq.push(cash+qty*closes[i]); res.hold.push(cap*closes[i]/p0);
+      res.eq.push(cash+qty*p); res.hold.push(cap*p/p0);
     }
-    res.info={pos:qty>0, rsi:R?R[end]:null};
+    res.info={pos:qty>0, rsi:R?R[end]:null, entry, blocked};
   } else if(type==='dca'){
     const part=cap/(1+P.so); let cash=cap, qty=0, spent=0, last=0, used=0, deals=0, profit=0, waitUntil=-1;
     const buy=i=>{ const amt=Math.min(part,cash); if(amt<0.01) return; const fee=amt*FEE; qty+=(amt-fee)/closes[i]; spent+=amt; cash-=amt; res.fees+=fee; last=closes[i]; mark(i,true); };
+    const closeDeal=(i,why)=>{ const g=qty*closes[i], fee=g*FEE; cash+=g-fee; res.fees+=fee; profit+=g-fee-spent; deals++; qty=0; spent=0; waitUntil=i; mark(i,false,why); if(why==='sl') res.exits.push({i,why}); };
     for(let i=start;i<=end;i++){
       const p=closes[i];
       if(qty===0){ if(i>waitUntil){ used=0; buy(i); } }
-      else if(p >= spent/qty*(1+P.tp/100)){ const g=qty*p, fee=g*FEE; cash+=g-fee; res.fees+=fee; profit+=g-fee-spent; deals++; qty=0; spent=0; waitUntil=i; mark(i,false); }
+      else if(sl && p<=spent/qty*(1-sl)) closeDeal(i,'sl');
+      else if(p >= spent/qty*(1+P.tp/100)) closeDeal(i);
       else if(used<P.so && p<=last*(1-P.step/100)){ buy(i); used++; }
       res.eq.push(cash+qty*p); res.hold.push(cap*p/p0);
     }
-    res.info={qty, used, so:P.so, target: qty ? spent/qty*(1+P.tp/100) : null, deals, profit};
+    res.info={qty, used, so:P.so, target: qty ? spent/qty*(1+P.tp/100) : null, stop: qty&&sl ? spent/qty*(1-sl) : null, deals, profit};
   } else if(type==='grid'){
-    const L=gridLevels(P,p0), N=P.grids, part=cap/N; let cash=cap, profit=0, pairs=0;
+    const L=gridLevels(P,p0), N=P.grids, part=cap/N; let cash=cap, profit=0, pairs=0, done=null;
     const cell=new Array(N).fill(0), cost=new Array(N).fill(0);
     res.levels=L;
     for(let k=0;k<N;k++) if(L[k]>=p0 && cash>=part-1e-9){ const fee=part*FEE; cell[k]=(part-fee)/p0; cost[k]=part; cash-=part; res.fees+=fee; mark(start,true); }
     for(let i=start;i<=end;i++){
       const p=closes[i];
-      if(i>start) for(let k=0;k<N;k++){
+      if(!done && i>start) for(let k=0;k<N;k++){
         if(cell[k]>0 && p>=L[k+1]){ const g=cell[k]*L[k+1], fee=g*FEE; cash+=g-fee; res.fees+=fee; profit+=g-fee-cost[k]; pairs++; cell[k]=0; mark(i,false); }
         else if(cell[k]===0 && p<=L[k] && cash>=part-1e-9){ const fee=part*FEE; cell[k]=(part-fee)/L[k]; cost[k]=part; cash-=part; res.fees+=fee; mark(i,true); }
       }
-      res.eq.push(cash+cell.reduce((a,b)=>a+b,0)*p); res.hold.push(cap*p/p0);
+      let v=cash+cell.reduce((a,b)=>a+b,0)*p;
+      if(!done && ((sl && v<=cap*(1-sl)) || (tk && v>=cap*(1+tk)))){
+        const why = v<=cap*(1-sl) && sl ? 'sl' : 'tp';
+        const q=cell.reduce((a,b)=>a+b,0); if(q>0){ const g=q*p, fee=g*FEE; cash+=g-fee; res.fees+=fee; cell.fill(0); mark(i,false,why); }
+        done={i,why}; res.exits.push(done); v=cash;
+      }
+      res.eq.push(v); res.hold.push(cap*p/p0);
     }
     const p=closes[end];
-    res.info={profit, pairs, filled:cell.filter(q=>q>0).length, N, lo:L[0], hi:L[N], where: p<L[0]?'below':p>L[N]?'above':'in'};
+    res.info={profit, pairs, filled:cell.filter(q=>q>0).length, N, lo:L[0], hi:L[N], where: p<L[0]?'below':p>L[N]?'above':'in', done};
   }
   return res;
 }
-function statusText(type, P, res, sym, cur, price){
-  const i=res.info, s=label(sym);
-  if(type==='sma') return i.pos ? `Trzyma ${s}. Sprzeda, gdy krótka średnia spadnie pod długą.` : `Czeka w dolarach. Kupi, gdy krótka średnia przebije długą w górę.`;
-  if(type==='rsi') return `RSI teraz ${i.rsi!=null?nf(i.rsi,0):'–'}. ` + (i.pos ? `Trzyma ${s}, sprzeda przy RSI powyżej ${P.high}.` : `Czeka, kupi przy RSI poniżej ${P.low}.`);
-  if(type==='dca') return i.qty ? `Transakcja w toku: ${1+i.used} z ${1+i.so} części kupione. Sprzeda wszystko przy ${fmtPx(i.target,cur)}. Zamknięte transakcje: ${i.deals}, zysk z nich ${nf(i.profit)} $.`
-    : `Zamknięte transakcje: ${i.deals}, zysk z nich ${nf(i.profit)} $. Zaraz zaczyna nową.`;
-  if(type==='grid') return `Zakres ${fmtPx(i.lo,cur)} – ${fmtPx(i.hi,cur)}. ${i.where==='in'?'Cena w zakresie':i.where==='above'?'Cena powyżej zakresu, bot czeka w gotówce':'Cena poniżej zakresu, bot trzyma wszystko'}. Zysk z siatki: ${nf(i.profit)} $ (${i.pairs} par kupno–sprzedaż).`;
+const WHY = {sl:'stop loss', tp:'take profit'};
+function statusText(type, P, res, sym, cur, times){
+  const i=res.info, s=label(sym), lastExit=res.exits.at(-1);
+  const exitNote = lastExit && times ? ` Ostatnio zadziałał ${WHY[lastExit.why]} (${fmtT(times[lastExit.i],'1h')}).` : '';
+  if(type==='sma'){
+    if(i.pos) return `Trzyma ${s}.` + (P.sl?` Stop loss przy ${fmtPx(i.entry*(1-P.sl/100),cur)}.`:'') + (P.tk?` Take profit przy ${fmtPx(i.entry*(1+P.tk/100),cur)}.`:'') + (!P.sl&&!P.tk?' Sprzeda, gdy krótka średnia spadnie pod długą.':'');
+    return (i.blocked ? 'Po zamknięciu pozycji czeka na nowy sygnał kupna.' : 'Czeka w dolarach. Kupi, gdy krótka średnia przebije długą w górę.') + exitNote;
+  }
+  if(type==='rsi') return `RSI teraz ${i.rsi!=null?nf(i.rsi,0):'–'}. ` + (i.pos ? `Trzyma ${s}, sprzeda przy RSI powyżej ${P.high}` + (P.sl?` albo przy stop loss ${fmtPx(i.entry*(1-P.sl/100),cur)}`:'') + '.' : `Czeka, kupi przy RSI poniżej ${P.low}.` + exitNote);
+  if(type==='dca') return (i.qty ? `Transakcja w toku: ${1+i.used} z ${1+i.so} części kupione. Sprzeda wszystko przy ${fmtPx(i.target,cur)}` + (i.stop?`, stop loss przy ${fmtPx(i.stop,cur)}`:'') + '.' : 'Zaraz zaczyna nową transakcję.')
+    + ` Zamknięte transakcje: ${i.deals}, wynik z nich ${(i.profit>=0?'+':'')+nf(i.profit)} $.` + exitNote;
+  if(type==='grid'){
+    if(i.done) return `Bot zamknięty przez ${WHY[i.done.why]} ${times?fmtT(times[i.done.i],'1h'):''}. Wszystko sprzedane, wynik zamrożony. Zysk z siatki: ${nf(i.profit)} $.`;
+    return `Zakres ${fmtPx(i.lo,cur)} – ${fmtPx(i.hi,cur)}. ${i.where==='in'?'Cena w zakresie':i.where==='above'?'Cena powyżej zakresu, bot czeka w gotówce':'Cena poniżej zakresu, bot trzyma wszystko'}. Zysk z siatki: ${nf(i.profit)} $ (${i.pairs} par kupno–sprzedaż).`;
+  }
   return '';
 }
 function sparkline(vals, base){
@@ -491,7 +524,7 @@ const B = {
       const info=assetInfo(b.sym), r=this.result(b), st=STRATS[b.type];
       const val=r?r.res.eq.at(-1):null, pl=val!=null?val-b.cap:null;
       const err=this.err[b.sym+'|'+b.iv];
-      const status = !r ? (err || 'Czekam na pierwszą zamkniętą świecę…') : b.stopped ? `Zatrzymany ${fmtT(b.stopped,'1h')}. Wynik zamrożony.` : statusText(b.type,b.P,r.res,b.sym,info.cur);
+      const status = !r ? (err || 'Czekam na pierwszą zamkniętą świecę…') : b.stopped ? `Zatrzymany ${fmtT(b.stopped,'1h')}. Wynik zamrożony.` : statusText(b.type,b.P,r.res,b.sym,info.cur,r.times);
       const open=this.open===b.id;
       return `<article class="botcard${b.stopped?' stopped':''}" data-id="${b.id}">
         <button class="bothead" type="button" data-toggle="${b.id}" aria-expanded="${open}">
@@ -511,12 +544,12 @@ const B = {
     let body='';
     if(r){
       const h=r.res.hold.at(-1);
-      const rows=r.res.trades.slice(-20).reverse().map(t=>`<tr><td>${fmtT(r.times[t.i],b.iv==='1d'?'1d':'1h')}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}</td><td>${fmtPx(r.closes[t.i],info.cur)}</td></tr>`).join('');
+      const rows=r.res.trades.slice(-20).reverse().map(t=>`<tr><td>${fmtT(r.times[t.i],b.iv==='1d'?'1d':'1h')}</td><td class="${t.buy?'up':'down'}">${t.buy?'Kupno':'Sprzedaż'}${t.why?` <span class="pill">${t.why==='sl'?'SL':'TP'}</span>`:''}</td><td>${fmtPx(r.closes[t.i],info.cur)}</td></tr>`).join('');
       body=`<div class="facts"><span>Gdyby tylko trzymać: <b>${nf(h)} $</b></span><span>Transakcje: <b>${r.res.trades.length}</b></span><span>Prowizje: <b>${nf(r.res.fees)} $</b></span></div>
         <svg class="chart" id="d-chart" viewBox="0 0 600 180" role="img" aria-label="Cena i transakcje bota"></svg>
         ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Cena</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Bot nie zrobił jeszcze żadnej transakcji.</p>'}`;
     }
-    const params=STRATS[b.type].params.map(p=>`${p.l}: <b>${b.P[p.k]}${p.u}</b>`).join(' · ');
+    const params=[...STRATS[b.type].params, ...protectFor(b.type)].map(p=>`${p.l}: <b>${pVal(p,b.P[p.k]||0)}</b>`).join(' · ');
     return `<div class="botdetails">${body}<p class="note">${params}</p>
       <div class="row" id="d-actions">${b.stopped?'':`<button class="btn ghost" type="button" id="d-stop">Zatrzymaj</button>`}<button class="btn ghost" type="button" id="d-copy">Skopiuj ustawienia</button><button class="btn ghost" type="button" id="d-del">Usuń</button></div></div>`;
   },
@@ -532,7 +565,7 @@ const B = {
   },
 
   // ---------- builder ----------
-  setType(t, rerender=true){ this.n.type=t; this.n.P=Object.fromEntries(STRATS[t].params.map(p=>[p.k,p.v])); if(rerender){ this.renderBuilder(); this.preview(); } },
+  setType(t, rerender=true){ this.n.type=t; const keep={sl:this.n.P?.sl||0, tk:this.n.P?.tk||0}; this.n.P={...Object.fromEntries(STRATS[t].params.map(p=>[p.k,p.v])), ...keep}; if(t==='dca') this.n.P.tk=0; if(rerender){ this.renderBuilder(); this.preview(); } },
   openBuilder(reset=true){
     if(reset){ this.n.market='CR'; this.n.sym='BTC'; this.n.iv='15m'; this.n.cap=100; this.setType('grid',false); }
     $('b-builder').hidden=false; $('b-listwrap').hidden=true; $('b-summary').hidden=true;
@@ -567,10 +600,14 @@ const B = {
     segButtons($('n-cap'), CAPS.map(c=>[String(c),c+' $']), String(n.cap), v=>{ n.cap=+v; this.renderBuilder(); this.preview(); });
     $('n-strats').innerHTML = Object.entries(STRATS).map(([k,s])=>`<button type="button" class="strat" data-t="${k}" aria-pressed="${k===n.type}"><span class="row between"><b>${s.name}</b><span class="pill">${s.tag}</span></span><span class="note">${s.desc}</span></button>`).join('');
     $('n-strats').querySelectorAll('button').forEach(b=>b.onclick=()=>this.setType(b.dataset.t));
-    $('n-params').innerHTML = STRATS[n.type].params.map(p=>`<div class="ctl"><label for="np-${p.k}">${p.l}</label><output id="npo-${p.k}">${n.P[p.k]}${p.u}</output><input type="range" id="np-${p.k}" min="${p.min}" max="${p.max}" step="${p.step}" value="${n.P[p.k]}"></div>`).join('');
-    STRATS[n.type].params.forEach(p=>{ $('np-'+p.k).oninput=e=>{ let v=+e.target.value;
+    const all=[...STRATS[n.type].params, ...protectFor(n.type)];
+    const ctl=p=>`<div class="ctl"><label for="np-${p.k}">${p.l}</label><output id="npo-${p.k}">${pVal(p,n.P[p.k])}</output><input type="range" id="np-${p.k}" min="${p.min}" max="${p.max}" step="${p.step}" value="${n.P[p.k]}"></div>`;
+    $('n-params').innerHTML = STRATS[n.type].params.map(ctl).join('')
+      + `<div class="subhead"><span class="k">Zabezpieczenia</span><span class="note">${protectHelp[n.type]} Ustaw 0, żeby wyłączyć.</span></div>`
+      + protectFor(n.type).map(ctl).join('');
+    all.forEach(p=>{ $('np-'+p.k).oninput=e=>{ let v=+e.target.value;
       if(n.type==='sma'){ if(p.k==='fast' && v>=n.P.slow) v=n.P.slow-1; if(p.k==='slow' && v<=n.P.fast) v=n.P.fast+1; e.target.value=v; }
-      n.P[p.k]=v; $('npo-'+p.k).textContent=v+p.u; this.preview(); }; });
+      n.P[p.k]=v; $('npo-'+p.k).textContent=pVal(p,v); this.preview(); }; });
   },
   preview(){
     const n=this.n, d=n.data, ids=['p-bot','p-hold'];
@@ -585,7 +622,8 @@ const B = {
     let extra='';
     if(n.type==='grid') extra=`<span>Zysk z siatki: <b>${nf(r.info.profit)} $</b></span>`;
     if(n.type==='dca') extra=`<span>Zamknięte transakcje: <b>${r.info.deals}</b></span>`;
-    $('p-facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span>${extra}`;
+    const ex=r.exits.length ? `<span>Zabezpieczenia zadziałały: <b>${r.exits.length}×</b></span>` : '';
+    $('p-facts').innerHTML=`<span>Okres: <b>${span<2?nf(span*24,0)+' h':nf(span,0)+' dni'}</b></span><span>Transakcje: <b>${r.trades.length}</b></span><span>Prowizje: <b>${nf(r.fees)} $</b></span>${extra}${ex}`;
     drawChart($('p-eq'),[{vals:r.eq,color:'var(--accent)',w:2.5},{vals:r.hold,color:'var(--hold)',w:1.5}],times.slice(w),n.iv,[],v=>nf(v,0)+' $',200);
     priceChart($('p-px'), r, closes, times, w, n.iv);
     const beat=b>h, gain=b>n.cap;
@@ -650,7 +688,7 @@ const X = {
       }
       this.prices[sym]=this.price; this.err=null;
     }catch(e){ this.err = CRYPTO[sym] ? 'Binance nie odpowiada. Spróbuję ponownie za chwilę.' : (stocksErr || 'Brak danych dla tej spółki.'); }
-    this.renderQuote(); this.renderOrder(); this.renderWallet();
+    this.renderQuote(); this.renderOrder(); this.renderWallet(); this.checkOrders();
   },
   renderQuote(){
     const sym=this.sym, info=sym?assetInfo(sym):null;
@@ -721,7 +759,7 @@ const X = {
       const have=w.pos[sym]||0; if(amt>have+1e-12) return;
       const q=Math.min(amt,have), gross=q*pxUsd, fee=gross*FEE;
       w.usd+=gross-fee; w.cost=w.cost||{}; if(have>0) w.cost[sym]=(w.cost[sym]||0)*(1-q/have);
-      w.pos[sym]=have-q; if(w.pos[sym]<1e-12){ delete w.pos[sym]; delete w.cost[sym]; }
+      w.pos[sym]=have-q; if(w.pos[sym]<1e-12){ delete w.pos[sym]; delete w.cost[sym]; if(w.orders) delete w.orders[sym]; }
       entry={t:Date.now(),sym,side:'sell',qty:q,px:this.price,usd:gross-fee};
     }
     w.hist.unshift(entry); w.hist=w.hist.slice(0,100);
@@ -737,7 +775,7 @@ const X = {
     const cr=held.filter(s=>CRYPTO[s]&&s!==this.sym);
     if(cr.length){ try{ const r=await binance(`/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(cr.map(s=>s+'USDT')))}`); r.forEach(x=>{ this.prices[x.symbol.replace('USDT','')]=+x.price; }); }catch(e){} }
     if(held.some(s=>!CRYPTO[s])){ await loadStocks(); for(const s of held) if(!CRYPTO[s]){ const a=stocks?.assets?.[s]; const ser=a?.iv?.['15m']||a?.iv?.['1h']||a?.iv?.['1d']; if(ser) this.prices[s]=ser.at(-1)[1]; } }
-    this.renderWallet();
+    this.renderWallet(); this.checkOrders();
   },
   renderWallet(){
     const w=this.wallet, el=$('x-wallet');
@@ -746,23 +784,74 @@ const X = {
       const px=this.prices[s]; const usd = px!=null ? this.toUsd(s,px)*q : null;
       if(usd!=null) total+=usd;
       const cost=w.cost?.[s]; const pl = usd!=null && cost ? usd-cost : null;
-      rows+=`<tr><td>${label(s)}</td><td>${nf(q, q<1?6:3)}</td><td>${usd!=null?nf(usd)+' $':'…'}</td><td class="${pl==null?'':cls(pl)}">${pl==null?'–':(pl>=0?'+':'')+nf(pl)+' $'}</td></tr>`;
+      const o=w.orders?.[s], cur=assetInfo(s).cur;
+      const oTxt = o ? [o.sl?`SL ${fmtPx(o.sl,cur)}`:'', o.tp?`TP ${fmtPx(o.tp,cur)}`:''].filter(Boolean).join(' · ') : 'Bez zabezpieczeń';
+      rows+=`<tr class="noline"><td>${label(s)}</td><td>${nf(q, q<1?6:3)}</td><td>${usd!=null?nf(usd)+' $':'…'}</td><td class="${pl==null?'':cls(pl)}">${pl==null?'–':(pl>=0?'+':'')+nf(pl)+' $'}</td></tr>
+        <tr><td colspan="4"><div class="row between" style="font-family:var(--body)"><span class="note">${oTxt}</span><button class="linkbtn" type="button" data-sltp="${s}">${o?'Zmień':'Ustaw SL/TP'}</button></div>${this.editing===s?this.sltpForm(s):''}</td></tr>`;
     }
     const allPriced = Object.keys(w.pos).every(s=>this.prices[s]!=null);
     el.innerHTML = `<div class="score"><div><span class="k">Wartość portfela</span><span class="v">${allPriced?nf(total)+' $':'…'}</span>${allPriced?`<span class="d ${cls(total-CAP)}">${fmtPct((total/CAP-1)*100)}</span>`:''}</div>
       <div><span class="k">Gotówka</span><span class="v">${nf(w.usd)} $</span></div></div>
       ${rows?`<div class="tablebox"><table class="ledger"><thead><tr><th>Walor</th><th>Ilość</th><th>Wartość</th><th>Zysk</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="note">Nie masz jeszcze żadnych walorów. Wybierz instrument i kup za część gotówki.</p>'}
       <div class="row" id="wReset"><button class="btn ghost" type="button" id="wResetBtn">Zacznij od nowa ze 100 $</button></div>`;
+    el.querySelectorAll('[data-sltp]').forEach(b=>b.onclick=()=>{ this.editing=this.editing===b.dataset.sltp?null:b.dataset.sltp; this.renderWallet(); });
+    if(this.editing && $('o-save')) this.wireSltp(this.editing);
     $('wResetBtn').onclick=()=>{
       $('wReset').innerHTML=`<span>Wyzerować portfel i historię?</span><button class="btn" type="button" id="wy">Tak</button><button class="btn ghost" type="button" id="wn">Anuluj</button>`;
       $('wy').onclick=()=>{ this.wallet={usd:100,pos:{},hist:[]}; store('gielda100',this.wallet); this.renderWallet(); this.renderHist(); this.renderOrder(); };
       $('wn').onclick=()=>this.renderWallet();
     };
   },
+  sltpForm(s){
+    const o=this.wallet.orders?.[s]||{}, px=this.prices[s], cur=assetInfo(s).cur;
+    const dflt=(m)=>px?+(px*m).toPrecision(5):'';
+    return `<div class="sltp"><p class="note">Pozycja sprzeda się w całości, gdy cena spadnie do stop loss albo wzrośnie do take profit. Ceny w ${cur==='PLN'?'złotych':'dolarach'}${px?`, teraz ${fmtPx(px,cur)}`:''}.</p>
+      <div class="sltp-grid"><label class="k" for="o-sl">Stop loss</label><div class="field"><input id="o-sl" type="number" inputmode="decimal" step="any" value="${o.sl??dflt(0.95)}"><span>${curSym(cur).trim()}</span></div>
+      <label class="k" for="o-tp">Take profit</label><div class="field"><input id="o-tp" type="number" inputmode="decimal" step="any" value="${o.tp??dflt(1.1)}"><span>${curSym(cur).trim()}</span></div></div>
+      <p class="note" id="o-err"></p>
+      <div class="row"><button class="btn" type="button" id="o-save">Zapisz</button>${this.wallet.orders?.[s]?'<button class="btn ghost" type="button" id="o-del">Usuń zabezpieczenia</button>':''}<button class="linkbtn" type="button" id="o-cancel">Anuluj</button></div></div>`;
+  },
+  wireSltp(s){
+    const w=this.wallet;
+    $('o-save').onclick=()=>{
+      const sl=parseFloat(($('o-sl').value||'').replace(',','.'))||0, tp=parseFloat(($('o-tp').value||'').replace(',','.'))||0, px=this.prices[s];
+      if(!sl && !tp){ $('o-err').textContent='Wpisz przynajmniej jedną cenę.'; return; }
+      if(px && sl && sl>=px){ $('o-err').textContent='Stop loss musi być poniżej obecnej ceny.'; return; }
+      if(px && tp && tp<=px){ $('o-err').textContent='Take profit musi być powyżej obecnej ceny.'; return; }
+      w.orders=w.orders||{}; w.orders[s]={sl:sl||null, tp:tp||null, since:Date.now()}; store('gielda100',w); this.editing=null; this.renderWallet();
+    };
+    const del=$('o-del'); if(del) del.onclick=()=>{ delete w.orders[s]; store('gielda100',w); this.editing=null; this.renderWallet(); };
+    $('o-cancel').onclick=()=>{ this.editing=null; this.renderWallet(); };
+  },
+  // Sell a position when its stop loss or take profit was reached, also while the page was closed.
+  async checkOrders(){
+    const w=this.wallet; if(this._checking || !w.orders) return; this._checking=true;
+    try{
+      for(const [s,o] of Object.entries(w.orders)){
+        const q=w.pos[s]; if(!q){ delete w.orders[s]; continue; }
+        let hit=null;
+        try{
+          const iv = CRYPTO[s] ? '5m' : '15m';
+          const c = CRYPTO[s] ? await cryptoCandles(s, iv, o.since) : (stockCandles(s, iv)||[]).filter(([t])=>t>=o.since);
+          for(const [t,px] of c){ if(o.sl && px<=o.sl){ hit={t:t+IVMS[iv],px,why:'sl'}; break; } if(o.tp && px>=o.tp){ hit={t:t+IVMS[iv],px,why:'tp'}; break; } }
+        }catch(e){}
+        const live=this.prices[s];
+        if(!hit && live!=null && (CRYPTO[s] || marketOpen(assetInfo(s).market))){ if(o.sl && live<=o.sl) hit={t:Date.now(),px:live,why:'sl'}; else if(o.tp && live>=o.tp) hit={t:Date.now(),px:live,why:'tp'}; }
+        if(!hit || !w.orders[s]) continue;
+        const gross=q*this.toUsd(s,hit.px), fee=gross*FEE;
+        w.usd+=gross-fee; delete w.pos[s]; if(w.cost) delete w.cost[s]; delete w.orders[s];
+        w.hist.unshift({t:hit.t,sym:s,side:'sell',qty:q,px:hit.px,usd:gross-fee,why:hit.why}); w.hist.sort((a,b)=>b.t-a.t);
+        store('gielda100',w);
+        const m=$('x-msg'); m.hidden=false; m.textContent=`Zadziałał ${WHY[hit.why]} na ${label(s)}: sprzedano po ${fmtPx(hit.px,assetInfo(s).cur)}, na konto wpłynęło ${nf(gross-fee)} $.`;
+        clearTimeout(this._t); this._t=setTimeout(()=>{ m.hidden=true; },8000);
+      }
+    } finally { this._checking=false; }
+    this.renderWallet(); this.renderHist(); this.renderOrder();
+  },
   renderHist(){
     const h=this.wallet.hist;
     $('x-hist').innerHTML = h.length ? `<div class="tablebox"><table class="ledger"><thead><tr><th>Kiedy</th><th>Ruch</th><th>Ilość</th><th>Cena</th><th>Kwota</th></tr></thead><tbody>${
-      h.slice(0,30).map(e=>`<tr><td>${fmtT(e.t,'1h')}</td><td class="${e.side==='buy'?'up':'down'}">${e.side==='buy'?'Kupno':'Sprzedaż'} ${label(e.sym)}</td><td>${nf(e.qty,e.qty<1?6:3)}</td><td>${fmtPx(e.px,assetInfo(e.sym).cur)}</td><td>${nf(e.usd)} $</td></tr>`).join('')
+      h.slice(0,30).map(e=>`<tr><td>${fmtT(e.t,'1h')}</td><td class="${e.side==='buy'?'up':'down'}">${e.side==='buy'?'Kupno':'Sprzedaż'} ${label(e.sym)}${e.why?` <span class="pill">${e.why==='sl'?'SL':'TP'}</span>`:''}</td><td>${nf(e.qty,e.qty<1?6:3)}</td><td>${fmtPx(e.px,assetInfo(e.sym).cur)}</td><td>${nf(e.usd)} $</td></tr>`).join('')
     }</tbody></table></div>` : '<p class="note">Tu pojawią się Twoje zlecenia.</p>';
   },
 };
