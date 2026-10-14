@@ -104,6 +104,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .optbox{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
 .optrow{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .seg button:disabled{opacity:.35;cursor:not-allowed}
+.rules{gap:10px}
+.ledger tr.held td{background:var(--accent-soft)}
+#view-cl{max-width:none;width:100%;margin:0}
 .stack{display:flex;flex-direction:column;gap:12px}
 .strats{display:grid;gap:8px}
 .strat{display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
@@ -129,6 +132,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="tabs" role="tablist">
       <button role="tab" id="tab-bot" aria-selected="true" type="button">Bot</button>
       <button role="tab" id="tab-ex" aria-selected="false" type="button">Giełda</button>
+      <button role="tab" id="tab-cl" aria-selected="false" type="button">Bot Claude</button>
     </div>
   </header>
 
@@ -228,6 +232,48 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <section aria-labelledby="h-hist">
       <h2 id="h-hist">Historia zleceń</h2>
       <div class="panel" id="x-hist"></div>
+    </section>
+  </div>
+
+  <!-- ============ BOT CLAUDE ============ -->
+  <div id="view-cl" class="wrap" hidden>
+    <section class="panel" aria-label="Wynik bota Claude">
+      <span class="eyebrow">Test na żywo · wirtualne 100 $</span>
+      <p id="c-head" class="headline">Ładuję dane bota…</p>
+      <div class="score">
+        <div><span class="k">Bot Claude</span><span class="v" id="c-val">–</span><span class="d" id="c-vald"></span></div>
+        <div><span class="k">S&amp;P 500 (fundusz SPY)</span><span class="v" id="c-spy">–</span><span class="d" id="c-spyd"></span></div>
+      </div>
+      <svg class="chart" id="c-chart" viewBox="0 0 600 200" role="img" aria-label="Wartość portfela bota i indeksu S&P 500"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Bot Claude</span><span><i style="background:var(--hold)"></i>S&amp;P 500</span></div>
+      <p class="note" id="c-asof"></p>
+    </section>
+
+    <section aria-labelledby="h-cpos">
+      <h2 id="h-cpos">Portfel</h2>
+      <div class="panel" id="c-pos"></div>
+    </section>
+
+    <section aria-labelledby="h-crank">
+      <h2 id="h-crank">Dzisiejszy ranking</h2>
+      <p class="lede" id="c-rank-lede"></p>
+      <div class="panel" id="c-rank"></div>
+    </section>
+
+    <section aria-labelledby="h-ctr">
+      <h2 id="h-ctr">Decyzje</h2>
+      <div class="panel" id="c-trades"></div>
+    </section>
+
+    <section aria-labelledby="h-crules">
+      <h2 id="h-crules">Zasady</h2>
+      <div class="panel rules">
+        <p>Co dzień roboczy po zamknięciu sesji w USA Claude pobiera ze Stocklake dane 49 dużych spółek i stosuje zawsze te same reguły. Nikt nie podejmuje decyzji ręcznie.</p>
+        <p><b>1. Warunki wejścia.</b> Cena nad średnią z 200 dni, prognozowane C/Z między 0 a 35, analitycy średnio co najmniej „kupuj”, rosnące przychody i dodatnia marża.</p>
+        <p><b>2. Ranking.</b> Spółki spełniające warunki dostają miejsca w czterech kategoriach: potencjał do celu analityków, wzrost zysków, taniość (niskie C/Z) i marża. Wynik to średnia, od 0 do 100.</p>
+        <p><b>3. Portfel.</b> 10 spółek. Spółka zostaje, dopóki jest w czołowej 15 i spełnia warunki. Wolne miejsca zajmują najlepsze spółki spoza portfela. Prowizja 0,1% od transakcji.</p>
+        <p class="note">Danych fundamentalnych z przeszłości nie ma, więc tej strategii nie da się sprawdzić na historii. To uczciwy test do przodu: wynik będzie coś znaczył dopiero po kilku miesiącach. To projekt do nauki, nie porada inwestycyjna.</p>
+      </div>
     </section>
   </div>
 
@@ -359,13 +405,48 @@ function drawChart(el, lines, times, iv, markers=[], fmt=shortNum, H=220){
 
 // ---------------- tabs ----------------
 function showTab(t){
-  const bot = t!=='gielda';
-  $('view-bot').hidden=!bot; $('view-ex').hidden=bot;
-  $('tab-bot').setAttribute('aria-selected',bot); $('tab-ex').setAttribute('aria-selected',!bot);
-  try{ history.replaceState(null,'',bot?'#bot':'#gielda'); }catch(e){}
-  if(bot) B.load(); else X.load();
+  if(!['bot','gielda','claude'].includes(t)) t='bot';
+  $('view-bot').hidden=t!=='bot'; $('view-ex').hidden=t!=='gielda'; $('view-cl').hidden=t!=='claude';
+  $('tab-bot').setAttribute('aria-selected',t==='bot'); $('tab-ex').setAttribute('aria-selected',t==='gielda'); $('tab-cl').setAttribute('aria-selected',t==='claude');
+  try{ history.replaceState(null,'','#'+t); }catch(e){}
+  if(t==='bot') B.load(); else if(t==='gielda') X.load(); else C.load();
 }
-$('tab-bot').onclick=()=>showTab('bot'); $('tab-ex').onclick=()=>showTab('gielda');
+$('tab-bot').onclick=()=>showTab('bot'); $('tab-ex').onclick=()=>showTab('gielda'); $('tab-cl').onclick=()=>showTab('claude');
+
+// =============== BOT CLAUDE ===============
+const C = {
+  data:null, err:null,
+  async load(){
+    try{ const r=await fetch('data/claude_bot.json?t='+Math.floor(Date.now()/300000),{cache:'no-store'}); if(!r.ok) throw 0; this.data=await r.json(); this.err=null; }
+    catch(e){ this.err='Nie udało się wczytać danych bota. Spróbuj odświeżyć stronę.'; }
+    this.render();
+  },
+  render(){
+    const s=this.data;
+    if(!s){ $('c-head').textContent=this.err||'Ładuję dane bota…'; return; }
+    const d=t=>{ const [y,m,dd]=t.split('-'); return `${dd}.${m}.${y}`; };
+    const days=Math.round((Date.parse(s.day)-Date.parse(s.start))/864e5);
+    const v=s.value, spy=s.spy_value;
+    $('c-head').innerHTML=`Bot wystartował <b>${d(s.start)}</b> ze 100 $. ${days<1?'To pierwszy dzień, więc na wynik jest za wcześnie.':days<60?`Minęło ${days} dni, to wciąż za krótko na wnioski.`:`Minęło ${days} dni.`}`;
+    $('c-val').textContent=nf(v)+' $'; $('c-vald').textContent=fmtPct(v-100); $('c-vald').className='d '+cls(v-100);
+    if(spy!=null){ $('c-spy').textContent=nf(spy)+' $'; $('c-spyd').textContent=fmtPct(spy-100); $('c-spyd').className='d '+cls(spy-100); }
+    const h=s.history;
+    if(h.length>1) drawChart($('c-chart'),[{vals:h.map(x=>x.value),color:'var(--accent)',w:2.5},{vals:h.map(x=>x.spy),color:'var(--hold)',w:1.5}],h.map(x=>Date.parse(x.date)),'1d',[],v=>nf(v,0)+' $',200);
+    else $('c-chart').outerHTML='<p class="note" id="c-chart">Wykres pojawi się po kilku dniach działania bota.</p>';
+    $('c-asof').textContent=`Ostatnia aktualizacja: ${fmtT(Date.parse(s.asof),'1h')}. Ceny ze Stocklake. Następna po zamknięciu kolejnej sesji w USA.`;
+    const pos=s.positions.map(p=>{ const pl=p.value-p.cost; return `<tr><td><b>${p.sym}</b> <span class="note">${p.name}</span></td><td>${p.rank?p.rank+'.':'–'}</td><td>${nf(p.value)} $</td><td class="${cls(pl)}">${(pl>=0?'+':'')+nf(pl)} $</td></tr>`; }).join('');
+    $('c-pos').innerHTML=`<div class="facts"><span>Gotówka: <b>${nf(s.cash)} $</b></span><span>Spółek: <b>${s.positions.length}</b></span></div>
+      <div class="tablebox"><table class="ledger"><thead><tr><th>Spółka</th><th>Miejsce</th><th>Wartość</th><th>Zysk</th></tr></thead><tbody>${pos}</tbody></table></div>`;
+    $('c-rank-lede').textContent=`Warunki spełnia ${s.eligible} z ${s.universe_size} spółek. Poniżej najlepsze. Liczby w nawiasach to miejsce w każdej kategorii od 0 do 100.`;
+    const held=new Set(s.positions.map(p=>p.sym));
+    $('c-rank').innerHTML=`<div class="tablebox"><table class="ledger"><thead><tr><th>#</th><th>Spółka</th><th>Wynik</th><th>Do celu</th><th>Wzrost zysku</th><th>C/Z</th><th>Marża</th></tr></thead><tbody>${
+      s.ranking.slice(0,15).map((r,i)=>`<tr${held.has(r.sym)?' class="held"':''}><td>${i+1}</td><td><b>${r.sym}</b>${held.has(r.sym)?' <span class="pill">w portfelu</span>':''}</td><td>${nf(r.score,0)}</td><td>${fmtPct(r.upside)} <span class="note">(${r.parts.upside})</span></td><td>${fmtPct(r.growth)} <span class="note">(${r.parts.growth})</span></td><td>${nf(r.pe,1)} <span class="note">(${r.parts.value})</span></td><td>${nf(r.margin,0)}% <span class="note">(${r.parts.margin})</span></td></tr>`).join('')
+    }</tbody></table></div>`;
+    $('c-trades').innerHTML = s.trades.length ? `<div class="tablebox"><table class="ledger"><thead><tr><th>Dzień</th><th>Ruch</th><th>Cena</th><th>Powód</th></tr></thead><tbody>${
+      s.trades.slice(0,40).map(t=>`<tr><td>${d(t.date)}</td><td class="${t.side==='buy'?'up':'down'}">${t.side==='buy'?'Kupno':'Sprzedaż'} ${t.sym}</td><td>${fmtPx(t.price)}</td><td style="font-family:var(--body)">${t.why}${t.pl!=null?` · <span class="${cls(t.pl)}">${(t.pl>=0?'+':'')+nf(t.pl)} $</span>`:''}</td></tr>`).join('')
+    }</tbody></table></div>` : '<p class="note">Brak decyzji.</p>';
+  },
+};
 
 function segButtons(el, items, current, onPick){
   el.innerHTML = items.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${v===current}">${l}</button>`).join('');
@@ -941,7 +1022,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ if(!$('
 
 // ---------------- boot ----------------
 loadStocks().then(()=>{ if(!$('view-ex').hidden){ X.renderPicker(); } else if(!$('b-builder').hidden){ B.renderBuilder(); } X.refreshHeld(); });
-showTab(location.hash==='#gielda' ? 'gielda' : 'bot');
+showTab((location.hash||'#bot').slice(1));
 </script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+{
+  "note": "50 symboli: 49 dużych spółek z USA z różnych branż oraz SPY (fundusz na S&P 500) jako punkt odniesienia. Pobierać w dwóch partiach po 25.",
+  "batches": [
+    ["SPY", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AVGO", "TSLA", "JPM", "V", "MA", "UNH", "LLY", "JNJ", "XOM", "CVX", "WMT", "COST", "PG", "HD", "KO", "PEP", "ORCL", "CRM"],
+    ["AMD", "ADBE", "NFLX", "CSCO", "QCOM", "TXN", "IBM", "NOW", "BAC", "WFC", "GS", "MS", "BLK", "ABBV", "MRK", "PFE", "TMO", "ABT", "CAT", "GE", "HON", "UNP", "LIN", "MCD", "BKNG"]
+  ],
+  "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AVGO", "TSLA", "JPM", "V", "MA", "UNH", "LLY", "JNJ", "XOM", "CVX", "WMT", "COST", "PG", "HD", "KO", "PEP", "ORCL", "CRM", "AMD", "ADBE", "NFLX", "CSCO", "QCOM", "TXN", "IBM", "NOW", "BAC", "WFC", "GS", "MS", "BLK", "ABBV", "MRK", "PFE", "TMO", "ABT", "CAT", "GE", "HON", "UNP", "LIN", "MCD", "BKNG"]
+}

@@ -12,3 +12,7 @@ Strona do nauki tradingu na wirtualnych pieniądzach: https://michajster.github.
 - Akcje: Yahoo Finance. Workflow `.github/workflows/stocks.yml` co ~15 minut w dni robocze uruchamia `scripts/fetch_stocks.py` i zapisuje `stocks.json` na gałęzi `data`. Ceny są więc opóźnione o kilkanaście minut.
 
 Prowizja w symulacji: 0,1% od transakcji. Projekt edukacyjny, nie porada inwestycyjna.
+
+## Bot Claude
+
+Zakładka „Bot Claude” to test do przodu strategii opartej na danych fundamentalnych ze Stocklake. Co dzień roboczy po zamknięciu sesji w USA zaplanowane zadanie Claude pobiera dane 49 spółek (`claude_bot/universe.json`), uruchamia `claude_bot/strategy.py` i zapisuje wynik w `data/claude_bot.json`. Zasady są opisane na początku `strategy.py`. Codzienne zrzuty danych trafiają do `claude_bot/snapshots/`, żeby w przyszłości dało się sprawdzić strategię na zebranej historii.
